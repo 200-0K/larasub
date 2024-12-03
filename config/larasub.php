@@ -13,7 +13,7 @@ return [
     */
 
     'scheduling' => [
-        'enabled' => env('LARASUB_SCHEDULING_ENABLED', true),
+        'enabled' => env('LARASUB_SCHEDULING_ENABLED', false),
         'ending_soon_days' => env('LARASUB_SCHEDULING_ENDING_SOON_DAYS', 7),
     ],
 
