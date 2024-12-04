@@ -7,7 +7,7 @@ use Err0r\Larasub\Facades\PeriodService;
 use Err0r\Larasub\Models\PlanFeature;
 use Illuminate\Database\Eloquent\Collection;
 
-final class SubscriptionService
+final class SubscriptionHelperService
 {
     /**
      * @param  \Err0r\Larasub\Models\Subscription  $subscription

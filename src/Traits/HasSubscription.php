@@ -2,7 +2,7 @@
 
 namespace Err0r\Larasub\Traits;
 
-use Err0r\Larasub\Facades\SubscriptionService;
+use Err0r\Larasub\Facades\SubscriptionHelperService;
 use Err0r\Larasub\Models\Feature;
 use Err0r\Larasub\Models\Subscription;
 use Err0r\Larasub\Models\SubscriptionFeatureUsage;
@@ -37,7 +37,7 @@ trait HasSubscription
      */
     public function featuresUsage()
     {
-        $subscription = SubscriptionService::validateActiveSubscription($this);
+        $subscription = SubscriptionHelperService::validateActiveSubscription($this);
 
         return $subscription->featuresUsage()->get();
     }
@@ -49,7 +49,7 @@ trait HasSubscription
      */
     public function featureUsage(string $slug)
     {
-        $subscription = SubscriptionService::validateActiveSubscription($this);
+        $subscription = SubscriptionHelperService::validateActiveSubscription($this);
 
         return $subscription->featureUsage($slug)->get();
     }
@@ -61,7 +61,7 @@ trait HasSubscription
      */
     public function planFeature(string $slug)
     {
-        $subscription = SubscriptionService::validateActiveSubscription($this);
+        $subscription = SubscriptionHelperService::validateActiveSubscription($this);
 
         return $subscription->planFeature($slug);
     }
@@ -71,7 +71,7 @@ trait HasSubscription
      */
     public function hasFeature(string $slug): bool
     {
-        $subscription = SubscriptionService::validateActiveSubscription($this);
+        $subscription = SubscriptionHelperService::validateActiveSubscription($this);
 
         return $subscription->hasFeature($slug);
     }
@@ -81,7 +81,7 @@ trait HasSubscription
      */
     public function hasFeatures(iterable $slugs): bool
     {
-        $subscription = SubscriptionService::validateActiveSubscription($this);
+        $subscription = SubscriptionHelperService::validateActiveSubscription($this);
 
         return collect($slugs)->every(fn ($slug) => $subscription->hasFeature($slug));
     }
@@ -91,7 +91,7 @@ trait HasSubscription
      */
     public function remainingFeatureUsage(string $slug): ?float
     {
-        $subscription = SubscriptionService::validateActiveSubscription($this);
+        $subscription = SubscriptionHelperService::validateActiveSubscription($this);
 
         return $subscription->remainingFeatureUsage($slug);
     }
@@ -108,7 +108,7 @@ trait HasSubscription
      */
     public function nextAvailableFeatureUsage(string $slug)
     {
-        $subscription = SubscriptionService::validateActiveSubscription($this);
+        $subscription = SubscriptionHelperService::validateActiveSubscription($this);
 
         return $subscription->nextAvailableFeatureUsage($slug);
     }
@@ -118,7 +118,7 @@ trait HasSubscription
      */
     public function canUseFeature(string $slug, float $value): bool
     {
-        $subscription = SubscriptionService::validateActiveSubscription($this);
+        $subscription = SubscriptionHelperService::validateActiveSubscription($this);
 
         return $subscription->canUseFeature($slug, $value);
     }
@@ -132,7 +132,7 @@ trait HasSubscription
      */
     public function useFeature(string $slug, float $value)
     {
-        $subscription = SubscriptionService::validateActiveSubscription($this);
+        $subscription = SubscriptionHelperService::validateActiveSubscription($this);
 
         return $subscription->useFeature($slug, $value);
     }

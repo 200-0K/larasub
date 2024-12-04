@@ -5,7 +5,7 @@ namespace Err0r\Larasub\Models;
 use Carbon\Carbon;
 use Err0r\Larasub\Enums\FeatureType;
 use Err0r\Larasub\Facades\PlanService;
-use Err0r\Larasub\Facades\SubscriptionService;
+use Err0r\Larasub\Facades\SubscriptionHelperService;
 use Err0r\Larasub\Traits\HasEvent;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
@@ -331,7 +331,7 @@ class Subscription extends Model
             return floatval(INF);
         }
 
-        $featureUsage = SubscriptionService::totalFeatureUsageInPeriod($this, $slug);
+        $featureUsage = SubscriptionHelperService::totalFeatureUsageInPeriod($this, $slug);
 
         return $planFeature->value - $featureUsage;
     }
@@ -344,11 +344,11 @@ class Subscription extends Model
      *
      * @throws \InvalidArgumentException
      *
-     * @see \Err0r\Larasub\Services\SubscriptionService::nextAvailableFeatureUsageInPeriod()
+     * @see \Err0r\Larasub\Services\SubscriptionHelperService::nextAvailableFeatureUsageInPeriod()
      */
     public function nextAvailableFeatureUsage(string $slug)
     {
-        return SubscriptionService::nextAvailableFeatureUsageInPeriod($this, $slug);
+        return SubscriptionHelperService::nextAvailableFeatureUsageInPeriod($this, $slug);
     }
 
     /**
