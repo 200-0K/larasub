@@ -2,6 +2,8 @@
 
 namespace Err0r\Larasub\Services;
 
+use Carbon\Carbon;
+
 final class SubscriptionService
 {
     /**
@@ -10,11 +12,11 @@ final class SubscriptionService
      * @param  \Err0r\Larasub\Models\Subscription  $subscription
      * @return \Err0r\Larasub\Models\Subscription
      */
-    public function renew($subscription)
+    public function renew($subscription, ?Carbon $startAt)
     {
         /** @var \Err0r\Larasub\Traits\Subscribable */
         $subscriber = $subscription->subscriber;
 
-        return $subscriber->subscribe($subscription->plan);
+        return $subscriber->subscribe($subscription->plan, $startAt);
     }
 }

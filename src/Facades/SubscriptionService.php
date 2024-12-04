@@ -5,7 +5,7 @@ namespace Err0r\Larasub\Facades;
 use Illuminate\Support\Facades\Facade;
 
 /**
- * @see \Err0r\Larasub\Services\SubscriptionHelperService
+ * @see \Err0r\Larasub\Services\SubscriptionService
  */
 class SubscriptionService extends Facade
 {
