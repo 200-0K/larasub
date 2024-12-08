@@ -180,14 +180,14 @@ class Subscription extends Model
     /**
      * Determine if the subscription is active.
      *
-     * A subscription is considered active if it is not expired, not set for a future date,
-     * not pending, and not cancelled.
+     * A subscription is considered active if the `start_at` attribute is less than or equal to the current date and time,
+     * and the `end_at` attribute is greater than or equal to the current date and time.
      *
      * @return bool True if the subscription is active, false otherwise.
      */
     public function isActive(): bool
     {
-        return ! $this->isExpired() && ! $this->isFuture() && ! $this->isPending() && ! $this->isCancelled();
+        return $this->start_at <= now() && ($this->end_at === null || $this->end_at >= now());
     }
 
     /**
