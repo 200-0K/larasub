@@ -187,7 +187,7 @@ class Subscription extends Model
      */
     public function isActive(): bool
     {
-        return $this->start_at <= now() && ($this->end_at === null || $this->end_at >= now());
+        return ($this->start_at !== null && $this->start_at <= now()) && ($this->end_at === null || $this->end_at >= now());
     }
 
     /**
