@@ -365,7 +365,7 @@ class Subscription extends Model
             throw new \LogicException('Subscription has already been renewed');
         }
 
-        $renewal = SubscriptionService::renew($this, $startAt);
+        $renewal = SubscriptionHelperService::renew($this, $startAt);
         
         $renewal->renewed_from_id = $this->id;
         $renewal->save();
