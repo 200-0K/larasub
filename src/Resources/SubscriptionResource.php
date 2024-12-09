@@ -22,6 +22,7 @@ class SubscriptionResource extends JsonResource
             'subscriber' => $this->whenLoaded('subscriber'),
             'plan' => new (config('larasub.resources.plan'))($this->whenLoaded('plan')),
             'features_usage' => config('larasub.resources.subscription_feature_usage')::collection($this->whenLoaded('featuresUsage')),
+            'renewed_from' => new (config('larasub.resources.subscription'))($this->whenLoaded('renewedFrom')),
             'created_at' => $this->created_at,
             'updated_at' => $this->updated_at,
         ];
