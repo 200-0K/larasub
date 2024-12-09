@@ -17,6 +17,9 @@ final class SubscriptionService
         /** @var \Err0r\Larasub\Traits\Subscribable */
         $subscriber = $subscription->subscriber;
 
-        return $subscriber->subscribe($subscription->plan, $startAt);
+        return $subscriber->subscribe(
+            $subscription->plan, 
+            $startAt
+        );
     }
 }

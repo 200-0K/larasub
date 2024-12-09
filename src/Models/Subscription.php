@@ -6,6 +6,7 @@ use Carbon\Carbon;
 use Err0r\Larasub\Enums\FeatureType;
 use Err0r\Larasub\Facades\PlanService;
 use Err0r\Larasub\Facades\SubscriptionHelperService;
+use Err0r\Larasub\Facades\SubscriptionService;
 use Err0r\Larasub\Traits\HasEvent;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
@@ -13,6 +14,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\Relations\MorphTo;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
@@ -28,6 +30,7 @@ class Subscription extends Model
         'start_at',
         'end_at',
         'cancelled_at',
+        'renewed_from_id',
     ];
 
     protected $casts = [
@@ -72,6 +75,24 @@ class Subscription extends Model
         return $this->featuresUsage()->whereHas('feature', fn ($q) => $q->slug($slug));
     }
 
+    /**
+     * Get the subscription this was renewed from
+     * @return BelongsTo<static>
+     */
+    public function renewedFrom(): BelongsTo 
+    {
+        return $this->belongsTo(config('larasub.models.subscription'), 'renewed_from_id');
+    }
+
+    /**
+     * Get the renewal subscription if this was renewed
+     * @return HasOne<static>
+     */
+    public function renewal(): HasOne
+    {
+        return $this->hasOne(config('larasub.models.subscription'), 'renewed_from_id');
+    }
+
     public function scopeActive(Builder $query): Builder
     {
         return $query
@@ -100,6 +121,51 @@ class Subscription extends Model
     public function scopeFuture(Builder $query): Builder
     {
         return $query->where('start_at', '>', now());
+    }
+
+    /**
+     * Scope for subscriptions that have been renewed
+     */
+    public function scopeRenewed(Builder $query): Builder
+    {
+        return $query->whereHas('renewal');
+    }
+
+    /**
+     * Scope for subscriptions that haven't been renewed
+     */
+    public function scopeNotRenewed(Builder $query): Builder
+    {
+        return $query->whereDoesntHave('renewal');
+    }
+
+    /**
+     * Scope for subscriptions that are renewals of other subscriptions
+     */
+    public function scopeIsRenewal(Builder $query): Builder
+    {
+        return $query->whereNotNull('renewed_from_id');
+    }
+
+    /**
+     * Scope for original subscriptions (not renewals)
+     */
+    public function scopeIsOriginal(Builder $query): Builder
+    {
+        return $query->whereNull('renewed_from_id');
+    }
+
+    /**
+     * Scope for subscriptions that are due for renewal
+     * (active, not renewed, and ending within specified days)
+     */
+    public function scopeDueForRenewal(Builder $query, int $withinDays = 7): Builder
+    {
+        return $query
+            ->active()
+            ->notRenewed()
+            ->whereNotNull('end_at')
+            ->where('end_at', '<=', now()->addDays($withinDays));
     }
 
     /**
@@ -239,6 +305,22 @@ class Subscription extends Model
     }
 
     /**
+     * Check if subscription was renewed
+     */
+    public function isRenewed(): bool
+    {
+        return $this->renewal()->exists();
+    }
+
+    /**
+     * Check if subscription is a renewal
+     */
+    public function isRenewal(): bool
+    {
+        return $this->renewed_from_id !== null;
+    }
+
+    /**
      * Cancel the subscription.
      *
      * @param  bool|null  $immediately  Whether to cancel the subscription immediately. Defaults to false.
@@ -269,6 +351,26 @@ class Subscription extends Model
         $this->end_at = $endAt ?? PlanService::getPlanEndAt($this->plan, $this->start_at);
 
         return $this->save();
+    }
+
+    /**
+     * Create a renewal subscription
+     * 
+     * @param Carbon|null $startAt Custom start date for renewal
+     * @throws \LogicException If subscription already renewed
+     */
+    public function renew(?Carbon $startAt = null): static
+    {
+        if ($this->isRenewed()) {
+            throw new \LogicException('Subscription has already been renewed');
+        }
+
+        $renewal = SubscriptionService::renew($this, $startAt);
+        
+        $renewal->renewed_from_id = $this->id;
+        $renewal->save();
+
+        return $renewal;
     }
 
     /**
