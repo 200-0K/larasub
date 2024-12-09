@@ -140,22 +140,6 @@ class Subscription extends Model
     }
 
     /**
-     * Scope for subscriptions that are renewals of other subscriptions
-     */
-    public function scopeIsRenewal(Builder $query): Builder
-    {
-        return $query->whereNotNull('renewed_from_id');
-    }
-
-    /**
-     * Scope for original subscriptions (not renewals)
-     */
-    public function scopeIsOriginal(Builder $query): Builder
-    {
-        return $query->whereNull('renewed_from_id');
-    }
-
-    /**
      * Scope for subscriptions that are due for renewal
      * (active, not renewed, and ending within specified days)
      */

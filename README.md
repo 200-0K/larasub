@@ -232,8 +232,6 @@ php artisan migrate
     // Query renewals
     $user->subscriptions()->renewed()->get();     // Get all renewed subscriptions
     $user->subscriptions()->notRenewed()->get();  // Get subscriptions not renewed
-    $user->subscriptions()->isRenewal()->get();   // Get subscriptions that are renewals
-    $user->subscriptions()->isOriginal()->get();  // Get original subscriptions (not renewals)
     
     // Find subscriptions due for renewal in next 7 days
     $user->subscriptions()->dueForRenewal()->get();
