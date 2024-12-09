@@ -218,6 +218,30 @@ php artisan migrate
     );
     ```
 
+- **Subscription Renewal**
+
+    ```php
+    // Check renewal status
+    $subscription->isRenewed();    // Has been renewed
+    $subscription->isRenewal();    // Is a renewal of another subscription
+
+    // Renew a subscription
+    $newSubscription = $subscription->renew();              // Renews from end_at
+    $newSubscription = $subscription->renew(startAt: now()); // Renews from specific date
+
+    // Query renewals
+    $user->subscriptions()->renewed()->get();     // Get all renewed subscriptions
+    $user->subscriptions()->notRenewed()->get();  // Get subscriptions not renewed
+    $user->subscriptions()->isRenewal()->get();   // Get subscriptions that are renewals
+    $user->subscriptions()->isOriginal()->get();  // Get original subscriptions (not renewals)
+    
+    // Find subscriptions due for renewal in next 7 days
+    $user->subscriptions()->dueForRenewal()->get();
+    
+    // Find subscriptions due for renewal in next 30 days
+    $user->subscriptions()->dueForRenewal(30)->get();
+    ```
+
 - **Subscription Status Checks**
 
     ```php
