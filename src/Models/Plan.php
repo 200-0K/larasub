@@ -88,6 +88,11 @@ class Plan extends Model
         return $this->is_active;
     }
 
+    public function isFree(): bool
+    {
+        return $this->price === 0;
+    }
+
     public static function builder(string $slug): PlanBuilder
     {
         return PlanBuilder::create($slug);
