@@ -6,7 +6,6 @@ use Carbon\Carbon;
 use Err0r\Larasub\Enums\FeatureType;
 use Err0r\Larasub\Facades\PlanService;
 use Err0r\Larasub\Facades\SubscriptionHelperService;
-use Err0r\Larasub\Facades\SubscriptionService;
 use Err0r\Larasub\Traits\HasEvent;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
@@ -77,15 +76,17 @@ class Subscription extends Model
 
     /**
      * Get the subscription this was renewed from
+     *
      * @return BelongsTo<static>
      */
-    public function renewedFrom(): BelongsTo 
+    public function renewedFrom(): BelongsTo
     {
         return $this->belongsTo(config('larasub.models.subscription'), 'renewed_from_id');
     }
 
     /**
      * Get the renewal subscription if this was renewed
+     *
      * @return HasOne<static>
      */
     public function renewal(): HasOne
@@ -304,6 +305,11 @@ class Subscription extends Model
         return $this->renewed_from_id !== null;
     }
 
+    public function isStatusChanged(): bool
+    {
+        return $this->isDirty('start_at') || $this->isDirty('end_at') || $this->isDirty('cancelled_at');
+    }
+
     /**
      * Cancel the subscription.
      *
@@ -339,8 +345,9 @@ class Subscription extends Model
 
     /**
      * Create a renewal subscription
-     * 
-     * @param Carbon|null $startAt Custom start date for renewal
+     *
+     * @param  Carbon|null  $startAt  Custom start date for renewal
+     *
      * @throws \LogicException If subscription already renewed
      */
     public function renew(?Carbon $startAt = null): static
@@ -350,7 +357,7 @@ class Subscription extends Model
         }
 
         $renewal = SubscriptionHelperService::renew($this, $startAt);
-        
+
         $renewal->renewed_from_id = $this->id;
         $renewal->save();
 

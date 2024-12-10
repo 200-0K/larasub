@@ -3,7 +3,7 @@
 namespace Err0r\Larasub\Traits;
 
 use Carbon\Carbon;
-use Err0r\Larasub\Facades\PlanService;
+use Err0r\Larasub\Facades\SubscriptionHelperService;
 use Err0r\Larasub\Models\Plan;
 use Err0r\Larasub\Models\Subscription;
 use Illuminate\Database\Eloquent\Relations\MorphMany;
@@ -31,21 +31,7 @@ trait Subscribable
             throw new \InvalidArgumentException("The plan must be an instance of $planClass");
         }
 
-        $startAt ??= now();
-
-        if ($pending) {
-            $startAt = null;
-        }
-
-        if ($startAt !== null && $endAt === null && $plan->reset_period !== null && $plan->reset_period_type !== null) {
-            $endAt = PlanService::getPlanEndAt($plan, $startAt);
-        }
-
-        $subscription = $this->subscriptions()->create([
-            'plan_id' => $plan->id,
-            'start_at' => $startAt,
-            'end_at' => $endAt,
-        ]);
+        $subscription = SubscriptionHelperService::subscribe($this, $plan, $startAt, $endAt, $pending);
 
         return $subscription;
     }

@@ -4,6 +4,7 @@ namespace Err0r\Larasub\Services;
 
 use Carbon\Carbon;
 use Err0r\Larasub\Facades\PeriodService;
+use Err0r\Larasub\Facades\PlanService;
 use Err0r\Larasub\Models\PlanFeature;
 use Illuminate\Database\Eloquent\Collection;
 
@@ -140,6 +141,44 @@ final class SubscriptionHelperService
     }
 
     /**
+     * @param  \Err0r\Larasub\Traits\Subscribable  $subscriber
+     * @param  \Err0r\Larasub\Models\Plan  $plan
+     * @param  \Err0r\Larasub\Models\Subscription|null  $renewedFrom
+     * @return \Err0r\Larasub\Models\Subscription
+     */
+    public function subscribe($subscriber, $plan, ?Carbon $startAt = null, ?Carbon $endAt = null, bool $pending = false, $renewedFrom = null)
+    {
+        $startAt ??= now();
+
+        if ($pending) {
+            $startAt = null;
+        }
+
+        if ($startAt !== null && $endAt === null && $plan->reset_period !== null && $plan->reset_period_type !== null) {
+            $endAt = PlanService::getPlanEndAt($plan, $startAt);
+        }
+
+        $subscription = new (config('larasub.models.subscription'))([
+            'plan_id' => $plan->id,
+            'start_at' => $startAt,
+            'end_at' => $endAt,
+        ]);
+
+        if ($renewedFrom) {
+            $subscription->renewed_from_id = $renewedFrom->id;
+        }
+
+        /** @var \Err0r\Larasub\Models\Subscription|bool */
+        $subscription = $subscriber->subscriptions()->save($subscription);
+
+        if (! $subscription) {
+            throw new \RuntimeException('Failed to create subscription');
+        }
+
+        return $subscription;
+    }
+
+    /**
      * Renew a subscription.
      *
      * @param  \Err0r\Larasub\Models\Subscription  $subscription
@@ -150,9 +189,6 @@ final class SubscriptionHelperService
         /** @var \Err0r\Larasub\Traits\Subscribable */
         $subscriber = $subscription->subscriber;
 
-        return $subscriber->subscribe(
-            $subscription->plan, 
-            $startAt
-        );
+        return $this->subscribe($subscriber, $subscription->plan, renewedFrom: $subscription);
     }
 }
