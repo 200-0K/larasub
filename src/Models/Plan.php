@@ -90,7 +90,7 @@ class Plan extends Model
 
     public function isFree(): bool
     {
-        return $this->price === 0;
+        return $this->price == 0;
     }
 
     public static function builder(string $slug): PlanBuilder
