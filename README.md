@@ -266,6 +266,29 @@ php artisan migrate
     $user->subscriptions()->whereNotPlan($plan)->get();
     ```
 
+- **Status Transition Detection**
+
+    ```php
+    <?php
+    $subscription = $user->subscriptions()->first();
+
+    // Check if any status changed
+    $subscription->hasStatusTransitioned();
+
+    // Check specific status transitions
+    $subscription->wasJustActivated();    // null -> date for start_at
+    $subscription->wasJustCancelled();    // null -> date for cancelled_at
+    $subscription->wasJustResumed();      // date -> null for cancelled_at
+    $subscription->wasJustRenewed();      // null -> id for renewed_from_id
+    ```
+
+    These methods help detect when a subscription's status has just changed:
+    - `hasStatusTransitioned()`: Checks if any status transition occurred
+    - `wasJustActivated()`: Detects activation (start date set)
+    - `wasJustCancelled()`: Detects cancellation (cancel date set)
+    - `wasJustResumed()`: Detects resumption (cancel date cleared)
+    - `wasJustRenewed()`: Detects renewal (renewal ID set)
+
 - **Feature Management**   
 
     ```php

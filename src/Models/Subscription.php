@@ -305,9 +305,29 @@ class Subscription extends Model
         return $this->renewed_from_id !== null;
     }
 
-    public function isStatusChanged(): bool
+    public function hasStatusTransitioned(): bool
     {
-        return $this->isDirty('start_at') || $this->isDirty('end_at') || $this->isDirty('cancelled_at');
+        return $this->wasJustActivated() || $this->wasJustCancelled() || $this->wasJustResumed() || $this->wasJustRenewed();
+    }
+
+    public function wasJustActivated(): bool
+    {
+        return $this->getOriginal('start_at') === null && $this->start_at !== null;
+    }
+
+    public function wasJustCancelled(): bool
+    {
+        return $this->getOriginal('cancelled_at') === null && $this->cancelled_at !== null;
+    }
+
+    public function wasJustResumed(): bool
+    {
+        return $this->getOriginal('cancelled_at') !== null && $this->cancelled_at === null;
+    }
+
+    public function wasJustRenewed(): bool
+    {
+        return $this->getOriginal('renewed_from_id') === null && $this->renewed_from_id !== null;
     }
 
     /**
