@@ -31,7 +31,6 @@ class PlanFeature extends Model
     ];
 
     protected $casts = [
-        'property' => 'array',
         'reset_period' => 'integer',
         'reset_period_type' => Period::class,
     ];
