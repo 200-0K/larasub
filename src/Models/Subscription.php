@@ -3,7 +3,6 @@
 namespace Err0r\Larasub\Models;
 
 use Carbon\Carbon;
-use Err0r\Larasub\Enums\FeatureType;
 use Err0r\Larasub\Facades\PlanService;
 use Err0r\Larasub\Facades\SubscriptionHelperService;
 use Err0r\Larasub\Traits\HasEvent;
@@ -423,11 +422,11 @@ class Subscription extends Model
      * Calculate the remaining usage for a given feature.
      *
      * @param  string  $slug  The slug identifier of the feature.
-     * @return float|null The remaining usage of the feature, or null if not applicable.
+     * @return float The remaining usage of the feature.
      *
      * @throws \InvalidArgumentException If the feature is not part of the plan, is non-consumable, or has no value.
      */
-    public function remainingFeatureUsage(string $slug): ?float
+    public function remainingFeatureUsage(string $slug): float
     {
         /** @var PlanFeature|null */
         $planFeature = $this->planFeature($slug);
@@ -436,7 +435,7 @@ class Subscription extends Model
             throw new \InvalidArgumentException("The feature '$slug' is not part of the plan");
         }
 
-        if ($planFeature->feature->type == FeatureType::NON_CONSUMABLE || $planFeature->value === null) {
+        if ($planFeature->feature->isNonConsumable() || $planFeature->value === null) {
             throw new \InvalidArgumentException("The feature '$slug' is not consumable or has no value");
         }
 
@@ -444,7 +443,7 @@ class Subscription extends Model
             return floatval(INF);
         }
 
-        $featureUsage = SubscriptionHelperService::totalFeatureUsageInPeriod($this, $slug);
+        $featureUsage = $this->totalFeatureUsageInPeriod($slug);
 
         return $planFeature->value - $featureUsage;
     }
@@ -453,15 +452,25 @@ class Subscription extends Model
      * Get the next time a feature will be available for use
      *
      * @param  string  $slug  The feature slug to check
-     * @return \Carbon\Carbon|bool|null
      *
      * @throws \InvalidArgumentException
      *
      * @see \Err0r\Larasub\Services\SubscriptionHelperService::nextAvailableFeatureUsageInPeriod()
      */
-    public function nextAvailableFeatureUsage(string $slug)
+    public function nextAvailableFeatureUsage(string $slug): bool|Carbon|null
     {
         return SubscriptionHelperService::nextAvailableFeatureUsageInPeriod($this, $slug);
+    }
+
+    /**
+     * Get the total usage of a feature in the current period.
+     *
+     * @param  string  $slug  The slug identifier of the feature.
+     * @return float The total usage of the feature in the current period.
+     */
+    public function totalFeatureUsageInPeriod(string $slug): float
+    {
+        return SubscriptionHelperService::totalFeatureUsageInPeriod($this, $slug);
     }
 
     /**
@@ -495,7 +504,7 @@ class Subscription extends Model
             throw new \InvalidArgumentException("The feature '$slug' is not part of the plan");
         }
 
-        if ($planFeature->feature->type == FeatureType::NON_CONSUMABLE) {
+        if ($planFeature->feature->isNonConsumable()) {
             return false;
         }
 
