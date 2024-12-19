@@ -4,6 +4,7 @@ namespace Err0r\Larasub\Traits;
 
 use Err0r\Larasub\Facades\SubscriptionHelperService;
 use Err0r\Larasub\Models\Feature;
+use Err0r\Larasub\Models\PlanFeature;
 use Err0r\Larasub\Models\Subscription;
 use Err0r\Larasub\Models\SubscriptionFeatureUsage;
 use Illuminate\Database\Eloquent\Collection;
@@ -57,7 +58,7 @@ trait HasSubscription
     /**
      * Get a specific feature for the active subscriptions.
      *
-     * @return Feature|null
+     * @return PlanFeature|null
      */
     public function planFeature(string $slug)
     {

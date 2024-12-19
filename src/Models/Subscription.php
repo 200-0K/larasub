@@ -3,7 +3,6 @@
 namespace Err0r\Larasub\Models;
 
 use Carbon\Carbon;
-use Err0r\Larasub\Enums\FeatureType;
 use Err0r\Larasub\Facades\PlanService;
 use Err0r\Larasub\Facades\SubscriptionHelperService;
 use Err0r\Larasub\Traits\HasEvent;
@@ -13,6 +12,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\Relations\MorphTo;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
@@ -28,6 +28,7 @@ class Subscription extends Model
         'start_at',
         'end_at',
         'cancelled_at',
+        'renewed_from_id',
     ];
 
     protected $casts = [
@@ -72,6 +73,26 @@ class Subscription extends Model
         return $this->featuresUsage()->whereHas('feature', fn ($q) => $q->slug($slug));
     }
 
+    /**
+     * Get the subscription this was renewed from
+     *
+     * @return BelongsTo<static>
+     */
+    public function renewedFrom(): BelongsTo
+    {
+        return $this->belongsTo(config('larasub.models.subscription'), 'renewed_from_id');
+    }
+
+    /**
+     * Get the renewal subscription if this was renewed
+     *
+     * @return HasOne<static>
+     */
+    public function renewal(): HasOne
+    {
+        return $this->hasOne(config('larasub.models.subscription'), 'renewed_from_id');
+    }
+
     public function scopeActive(Builder $query): Builder
     {
         return $query
@@ -100,6 +121,35 @@ class Subscription extends Model
     public function scopeFuture(Builder $query): Builder
     {
         return $query->where('start_at', '>', now());
+    }
+
+    /**
+     * Scope for subscriptions that have been renewed
+     */
+    public function scopeRenewed(Builder $query): Builder
+    {
+        return $query->whereHas('renewal');
+    }
+
+    /**
+     * Scope for subscriptions that haven't been renewed
+     */
+    public function scopeNotRenewed(Builder $query): Builder
+    {
+        return $query->whereDoesntHave('renewal');
+    }
+
+    /**
+     * Scope for subscriptions that are due for renewal
+     * (active, not renewed, and ending within specified days)
+     */
+    public function scopeDueForRenewal(Builder $query, int $withinDays = 7): Builder
+    {
+        return $query
+            ->active()
+            ->notRenewed()
+            ->whereNotNull('end_at')
+            ->where('end_at', '<=', now()->addDays($withinDays));
     }
 
     /**
@@ -239,6 +289,47 @@ class Subscription extends Model
     }
 
     /**
+     * Check if subscription was renewed
+     */
+    public function isRenewed(): bool
+    {
+        return $this->renewal()->exists();
+    }
+
+    /**
+     * Check if subscription is a renewal
+     */
+    public function isRenewal(): bool
+    {
+        return $this->renewed_from_id !== null;
+    }
+
+    public function hasStatusTransitioned(): bool
+    {
+        return $this->wasJustActivated() || $this->wasJustCancelled() || $this->wasJustResumed() || $this->wasJustRenewed();
+    }
+
+    public function wasJustActivated(): bool
+    {
+        return $this->getOriginal('start_at') === null && $this->start_at !== null;
+    }
+
+    public function wasJustCancelled(): bool
+    {
+        return $this->getOriginal('cancelled_at') === null && $this->cancelled_at !== null;
+    }
+
+    public function wasJustResumed(): bool
+    {
+        return $this->getOriginal('cancelled_at') !== null && $this->cancelled_at === null;
+    }
+
+    public function wasJustRenewed(): bool
+    {
+        return $this->getOriginal('renewed_from_id') === null && $this->renewed_from_id !== null;
+    }
+
+    /**
      * Cancel the subscription.
      *
      * @param  bool|null  $immediately  Whether to cancel the subscription immediately. Defaults to false.
@@ -269,6 +360,27 @@ class Subscription extends Model
         $this->end_at = $endAt ?? PlanService::getPlanEndAt($this->plan, $this->start_at);
 
         return $this->save();
+    }
+
+    /**
+     * Create a renewal subscription
+     *
+     * @param  Carbon|null  $startAt  Custom start date for renewal
+     *
+     * @throws \LogicException If subscription already renewed
+     */
+    public function renew(?Carbon $startAt = null): static
+    {
+        if ($this->isRenewed()) {
+            throw new \LogicException('Subscription has already been renewed');
+        }
+
+        $renewal = SubscriptionHelperService::renew($this, $startAt);
+
+        $renewal->renewed_from_id = $this->id;
+        $renewal->save();
+
+        return $renewal;
     }
 
     /**
@@ -310,11 +422,11 @@ class Subscription extends Model
      * Calculate the remaining usage for a given feature.
      *
      * @param  string  $slug  The slug identifier of the feature.
-     * @return float|null The remaining usage of the feature, or null if not applicable.
+     * @return float The remaining usage of the feature.
      *
      * @throws \InvalidArgumentException If the feature is not part of the plan, is non-consumable, or has no value.
      */
-    public function remainingFeatureUsage(string $slug): ?float
+    public function remainingFeatureUsage(string $slug): float
     {
         /** @var PlanFeature|null */
         $planFeature = $this->planFeature($slug);
@@ -323,7 +435,7 @@ class Subscription extends Model
             throw new \InvalidArgumentException("The feature '$slug' is not part of the plan");
         }
 
-        if ($planFeature->feature->type == FeatureType::NON_CONSUMABLE || $planFeature->value === null) {
+        if ($planFeature->feature->isNonConsumable() || $planFeature->value === null) {
             throw new \InvalidArgumentException("The feature '$slug' is not consumable or has no value");
         }
 
@@ -331,7 +443,7 @@ class Subscription extends Model
             return floatval(INF);
         }
 
-        $featureUsage = SubscriptionHelperService::totalFeatureUsageInPeriod($this, $slug);
+        $featureUsage = $this->totalFeatureUsageInPeriod($slug);
 
         return $planFeature->value - $featureUsage;
     }
@@ -340,15 +452,25 @@ class Subscription extends Model
      * Get the next time a feature will be available for use
      *
      * @param  string  $slug  The feature slug to check
-     * @return \Carbon\Carbon|bool|null
      *
      * @throws \InvalidArgumentException
      *
      * @see \Err0r\Larasub\Services\SubscriptionHelperService::nextAvailableFeatureUsageInPeriod()
      */
-    public function nextAvailableFeatureUsage(string $slug)
+    public function nextAvailableFeatureUsage(string $slug): bool|Carbon|null
     {
         return SubscriptionHelperService::nextAvailableFeatureUsageInPeriod($this, $slug);
+    }
+
+    /**
+     * Get the total usage of a feature in the current period.
+     *
+     * @param  string  $slug  The slug identifier of the feature.
+     * @return float The total usage of the feature in the current period.
+     */
+    public function totalFeatureUsageInPeriod(string $slug): float
+    {
+        return SubscriptionHelperService::totalFeatureUsageInPeriod($this, $slug);
     }
 
     /**
@@ -382,7 +504,7 @@ class Subscription extends Model
             throw new \InvalidArgumentException("The feature '$slug' is not part of the plan");
         }
 
-        if ($planFeature->feature->type == FeatureType::NON_CONSUMABLE) {
+        if ($planFeature->feature->isNonConsumable()) {
             return false;
         }
 

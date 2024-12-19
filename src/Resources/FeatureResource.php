@@ -19,7 +19,7 @@ class FeatureResource extends JsonResource
             'slug' => $this->slug,
             'name' => $this->name,
             'description' => $this->description,
-            // 'type' => $this->type,
+            'type' => $this->type,
             'sort_order' => $this->sort_order,
             'created_at' => $this->created_at,
             'updated_at' => $this->updated_at,

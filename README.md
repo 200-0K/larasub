@@ -218,6 +218,28 @@ php artisan migrate
     );
     ```
 
+- **Subscription Renewal**
+
+    ```php
+    // Check renewal status
+    $subscription->isRenewed();    // Has been renewed
+    $subscription->isRenewal();    // Is a renewal of another subscription
+
+    // Renew a subscription
+    $newSubscription = $subscription->renew();              // Renews from end_at
+    $newSubscription = $subscription->renew(startAt: now()); // Renews from specific date
+
+    // Query renewals
+    $user->subscriptions()->renewed()->get();     // Get all renewed subscriptions
+    $user->subscriptions()->notRenewed()->get();  // Get subscriptions not renewed
+    
+    // Find subscriptions due for renewal in next 7 days
+    $user->subscriptions()->dueForRenewal()->get();
+    
+    // Find subscriptions due for renewal in next 30 days
+    $user->subscriptions()->dueForRenewal(30)->get();
+    ```
+
 - **Subscription Status Checks**
 
     ```php
@@ -243,6 +265,29 @@ php artisan migrate
     $user->subscriptions()->wherePlan('premium')->get(); // Using plan slug
     $user->subscriptions()->whereNotPlan($plan)->get();
     ```
+
+- **Status Transition Detection**
+
+    ```php
+    <?php
+    $subscription = $user->subscriptions()->first();
+
+    // Check if any status changed
+    $subscription->hasStatusTransitioned();
+
+    // Check specific status transitions
+    $subscription->wasJustActivated();    // null -> date for start_at
+    $subscription->wasJustCancelled();    // null -> date for cancelled_at
+    $subscription->wasJustResumed();      // date -> null for cancelled_at
+    $subscription->wasJustRenewed();      // null -> id for renewed_from_id
+    ```
+
+    These methods help detect when a subscription's status has just changed:
+    - `hasStatusTransitioned()`: Checks if any status transition occurred
+    - `wasJustActivated()`: Detects activation (start date set)
+    - `wasJustCancelled()`: Detects cancellation (cancel date set)
+    - `wasJustResumed()`: Detects resumption (cancel date cleared)
+    - `wasJustRenewed()`: Detects renewal (renewal ID set)
 
 - **Feature Management**   
 

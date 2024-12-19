@@ -7,6 +7,11 @@ use Illuminate\Http\Resources\Json\JsonResource;
 
 class PlanFeatureResource extends JsonResource
 {
+    public function __construct($resource, private $subscription = null)
+    {
+        parent::__construct($resource);
+    }
+
     /**
      * Transform the resource into an array.
      *
@@ -14,6 +19,8 @@ class PlanFeatureResource extends JsonResource
      */
     public function toArray(Request $request): array
     {
+        $isSubscriptionPresent = $this->subscription instanceof (config('larasub.models.subscription'));
+
         return [
             'id' => $this->id,
             'value' => $this->value,
@@ -23,6 +30,11 @@ class PlanFeatureResource extends JsonResource
             'sort_order' => $this->sort_order,
             'plan' => new (config('larasub.resources.plan'))($this->whenLoaded('plan')),
             'feature' => new (config('larasub.resources.feature'))($this->whenLoaded('feature')),
+            $this->mergeWhen($isSubscriptionPresent && $this->feature->isConsumable(), fn () => [
+                'total_usages' => $this->subscription->totalFeatureUsageInPeriod($this->feature->slug),
+                'remaining_usages' => $this->subscription->remainingFeatureUsage($this->feature->slug),
+                'next_reset_at' => $this->subscription->nextAvailableFeatureUsage($this->feature->slug),
+            ]),
             'created_at' => $this->created_at,
             'updated_at' => $this->updated_at,
         ];
