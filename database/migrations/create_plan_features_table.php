@@ -30,7 +30,7 @@ return new class extends Migration
                 : $table->foreignId('feature_id')
             )->constrained(config('larasub.tables.features.name'))->cascadeOnDelete();
 
-            $table->string('value')->nullable();
+            $table->text('value')->nullable();
             $table->json('display_value')->nullable();
             $table->unsignedSmallInteger('reset_period')->nullable();
             $table->string('reset_period_type')->nullable();
