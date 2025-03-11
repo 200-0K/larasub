@@ -2,9 +2,11 @@
 
 namespace Err0r\Larasub\Resources;
 
+use Err0r\Larasub\Models\Plan;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
+/** @mixin Plan */
 class PlanResource extends JsonResource
 {
     public function __construct($resource, private $subscription = null)
@@ -20,7 +22,7 @@ class PlanResource extends JsonResource
     public function toArray(Request $request): array
     {
         return [
-            'id' => $this->id,
+            'id' => $this->getKey(),
             'slug' => $this->slug,
             'name' => $this->name,
             'description' => $this->description,

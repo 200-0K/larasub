@@ -11,6 +11,17 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Spatie\Translatable\HasTranslations;
 
+/**
+ * @property string $value
+ * @property string $display_value
+ * @property int $reset_period
+ * @property Period $reset_period_type
+ * @property int $sort_order
+ * @property \Carbon\Carbon $created_at
+ * @property \Carbon\Carbon $updated_at
+ * @property-read Plan $plan
+ * @property-read Feature $feature
+ */
 class PlanFeature extends Model
 {
     use HasFactory;
@@ -42,14 +53,26 @@ class PlanFeature extends Model
         $this->setTable(config('larasub.tables.plan_features.name'));
     }
 
+    /**
+     * @return BelongsTo<Plan, $this>
+     */
     public function plan(): BelongsTo
     {
-        return $this->belongsTo(config('larasub.models.plan'));
+        /** @var class-string<Plan> */
+        $class = config('larasub.models.plan');
+
+        return $this->belongsTo($class);
     }
 
+    /**
+     * @return BelongsTo<Feature, $this>
+     */
     public function feature(): BelongsTo
     {
-        return $this->belongsTo(config('larasub.models.feature'));
+        /** @var class-string<Feature> */
+        $class = config('larasub.models.feature');
+
+        return $this->belongsTo($class);
     }
 
     public function isUnlimited(): bool

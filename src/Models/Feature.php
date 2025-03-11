@@ -13,6 +13,18 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Spatie\Translatable\HasTranslations;
 
+/**
+ * @property string $slug
+ * @property string $name
+ * @property string $description
+ * @property FeatureType $type
+ * @property int $sort_order
+ * @property \Carbon\Carbon $deleted_at
+ * @property \Carbon\Carbon $created_at
+ * @property \Carbon\Carbon $updated_at
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, PlanFeature> $plans
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, Subscription> $subscriptions
+ */
 class Feature extends Model
 {
     use HasFactory;
@@ -44,14 +56,26 @@ class Feature extends Model
         $this->setTable(config('larasub.tables.features.name'));
     }
 
+    /**
+     * @return HasMany<Plan, $this>
+     */
     public function plans(): HasMany
     {
-        return $this->hasMany(config('larasub.models.plan_feature'));
+        /** @var class-string<Plan> */
+        $class = config('larasub.models.plan_feature');
+
+        return $this->hasMany($class);
     }
 
+    /**
+     * @return HasMany<SubscriptionFeatureUsage, $this>
+     */
     public function subscriptions(): HasMany
     {
-        return $this->hasMany(config('larasub.models.subscription_feature_usages'));
+        /** @var class-string<SubscriptionFeatureUsage> */
+        $class = config('larasub.models.subscription_feature_usages');
+
+        return $this->hasMany($class);
     }
 
     public function isConsumable(): bool

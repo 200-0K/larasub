@@ -141,7 +141,7 @@ final class SubscriptionHelperService
     }
 
     /**
-     * @param  \Err0r\Larasub\Traits\Subscribable  $subscriber
+     * @param  \Illuminate\Database\Eloquent\Model  $subscriber
      * @param  \Err0r\Larasub\Models\Plan  $plan
      * @param  \Err0r\Larasub\Models\Subscription|null  $renewedFrom
      * @return \Err0r\Larasub\Models\Subscription
@@ -168,6 +168,10 @@ final class SubscriptionHelperService
             $subscription->renewed_from_id = $renewedFrom->id;
         }
 
+        if (! method_exists($subscriber, 'subscriptions')) {
+            throw new \InvalidArgumentException('The subscriber must have a subscriptions relationship');
+        }
+
         /** @var \Err0r\Larasub\Models\Subscription|bool */
         $subscription = $subscriber->subscriptions()->save($subscription);
 
@@ -186,7 +190,6 @@ final class SubscriptionHelperService
      */
     public function renew($subscription, ?Carbon $startAt = null)
     {
-        /** @var \Err0r\Larasub\Traits\Subscribable */
         $subscriber = $subscription->subscriber;
 
         return $this->subscribe($subscriber, $subscription->plan, renewedFrom: $subscription);

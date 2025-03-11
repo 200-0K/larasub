@@ -9,7 +9,7 @@ class FeatureBuilder
 {
     private array $attributes = [];
 
-    public function __construct(private string $slug)
+    public function __construct(string $slug)
     {
         $this->attributes['slug'] = $slug;
         $this->attributes['type'] = FeatureType::NON_CONSUMABLE;

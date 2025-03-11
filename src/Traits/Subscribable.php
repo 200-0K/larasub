@@ -10,9 +10,15 @@ use Illuminate\Database\Eloquent\Relations\MorphMany;
 
 trait Subscribable
 {
+    /**
+     * @return MorphMany<Subscription, $this>
+     */
     public function subscriptions(): MorphMany
     {
-        return $this->morphMany(config('larasub.models.subscription'), 'subscriber');
+        /** @var class-string<Subscription> */
+        $class = config('larasub.models.subscription');
+
+        return $this->morphMany($class, 'subscriber');
     }
 
     /**
@@ -25,8 +31,9 @@ trait Subscribable
      */
     public function subscribe($plan, ?Carbon $startAt = null, ?Carbon $endAt = null, bool $pending = false)
     {
-        /** @var Plan */
+        /** @var class-string<Plan> */
         $planClass = config('larasub.models.plan');
+
         if (! ($plan instanceof $planClass)) {
             throw new \InvalidArgumentException("The plan must be an instance of $planClass");
         }

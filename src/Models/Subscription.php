@@ -16,6 +16,22 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\Relations\MorphTo;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
+/**
+ * @property string|int $plan_id
+ * @property string|int $renewed_from_id
+ * @property Carbon $start_at
+ * @property Carbon $end_at
+ * @property ?Carbon $cancelled_at
+ * @property Carbon $deleted_at
+ * @property Carbon $created_at
+ * @property Carbon $updated_at
+ * @property-read Plan $plan
+ * @property-read Model $subscriber
+ * @property-read Subscription $renewedFrom
+ * @property-read Subscription $renewal
+ * @property-read SubscriptionFeatureUsage[] $featuresUsage
+ * @property-read SubscriptionFeatureUsage[] $featureUsage
+ */
 class Subscription extends Model
 {
     use HasEvent;
@@ -45,11 +61,14 @@ class Subscription extends Model
     }
 
     /**
-     * @return BelongsTo<Plan>
+     * @return BelongsTo<Plan, $this>
      */
     public function plan(): BelongsTo
     {
-        return $this->belongsTo(config('larasub.models.plan'));
+        /** @var class-string<Plan> */
+        $class = config('larasub.models.plan');
+
+        return $this->belongsTo($class);
     }
 
     public function subscriber(): MorphTo
@@ -58,41 +77,57 @@ class Subscription extends Model
     }
 
     /**
-     * @return HasMany<SubscriptionFeatureUsage>
+     * @return HasMany<SubscriptionFeatureUsage, $this>
      */
     public function featuresUsage(): HasMany
     {
-        return $this->hasMany(config('larasub.models.subscription_feature_usages'));
+        /** @var class-string<SubscriptionFeatureUsage> */
+        $class = config('larasub.models.subscription_feature_usages');
+
+        return $this->hasMany($class);
     }
 
     /**
-     * @return HasMany<SubscriptionFeatureUsage>
+     * @return HasMany<SubscriptionFeatureUsage, $this>
      */
     public function featureUsage(string $slug): HasMany
     {
-        return $this->featuresUsage()->whereHas('feature', fn ($q) => $q->slug($slug));
+        /** @var HasMany<SubscriptionFeatureUsage, $this> */
+        return $this
+            ->featuresUsage()
+            ->whereHas('feature', fn ($q) => $q->slug($slug));
     }
 
     /**
      * Get the subscription this was renewed from
      *
-     * @return BelongsTo<static>
+     * @return BelongsTo<Subscription, $this>
      */
     public function renewedFrom(): BelongsTo
     {
-        return $this->belongsTo(config('larasub.models.subscription'), 'renewed_from_id');
+        /** @var class-string<Subscription> */
+        $class = config('larasub.models.subscription');
+
+        return $this->belongsTo($class, 'renewed_from_id');
     }
 
     /**
      * Get the renewal subscription if this was renewed
      *
-     * @return HasOne<static>
+     * @return HasOne<Subscription, $this>
      */
     public function renewal(): HasOne
     {
-        return $this->hasOne(config('larasub.models.subscription'), 'renewed_from_id');
+        /** @var class-string<Subscription> */
+        $class = config('larasub.models.subscription');
+
+        return $this->hasOne($class, 'renewed_from_id');
     }
 
+    /**
+     * @param  Builder<static>  $query
+     * @return Builder<static>
+     */
     public function scopeActive(Builder $query): Builder
     {
         return $query
@@ -103,21 +138,37 @@ class Subscription extends Model
             );
     }
 
+    /**
+     * @param  Builder<static>  $query
+     * @return Builder<static>
+     */
     public function scopePending(Builder $query): Builder
     {
         return $query->whereNull('start_at')->whereNull('cancelled_at');
     }
 
+    /**
+     * @param  Builder<static>  $query
+     * @return Builder<static>
+     */
     public function scopeCancelled(Builder $query): Builder
     {
         return $query->whereNotNull('cancelled_at');
     }
 
+    /**
+     * @param  Builder<static>  $query
+     * @return Builder<static>
+     */
     public function scopeExpired(Builder $query): Builder
     {
         return $query->where('end_at', '<', now());
     }
 
+    /**
+     * @param  Builder<static>  $query
+     * @return Builder<static>
+     */
     public function scopeFuture(Builder $query): Builder
     {
         return $query->where('start_at', '>', now());
@@ -125,6 +176,9 @@ class Subscription extends Model
 
     /**
      * Scope for subscriptions that have been renewed
+     *
+     * @param  Builder<static>  $query
+     * @return Builder<static>
      */
     public function scopeRenewed(Builder $query): Builder
     {
@@ -133,6 +187,9 @@ class Subscription extends Model
 
     /**
      * Scope for subscriptions that haven't been renewed
+     *
+     * @param  Builder<static>  $query
+     * @return Builder<static>
      */
     public function scopeNotRenewed(Builder $query): Builder
     {
@@ -142,6 +199,9 @@ class Subscription extends Model
     /**
      * Scope for subscriptions that are due for renewal
      * (active, not renewed, and ending within specified days)
+     *
+     * @param  Builder<static>  $query
+     * @return Builder<static>
      */
     public function scopeDueForRenewal(Builder $query, int $withinDays = 7): Builder
     {
@@ -155,7 +215,9 @@ class Subscription extends Model
     /**
      * Scope a query to only include subscriptions with a specific plan.
      *
+     * @param  Builder<static>  $query
      * @param  Plan|string  $plan  The plan instance or slug.
+     * @return Builder<static>
      */
     public function scopeWherePlan(Builder $query, $plan): Builder
     {
@@ -170,7 +232,9 @@ class Subscription extends Model
     /**
      * Scope a query to exclude a specific plan.
      *
+     * @param  Builder<static>  $query
      * @param  Plan|string  $plan  Plan instance or slug
+     * @return Builder<static>
      */
     public function scopeWhereNotPlan(Builder $query, $plan): Builder
     {
@@ -180,7 +244,9 @@ class Subscription extends Model
     /**
      * Scope a query to only include subscriptions with a specific feature.
      *
+     * @param  Builder<static>  $query
      * @param  Feature|string  $feature  The feature instance or slug.
+     * @return Builder<static>
      */
     public function scopeWhereFeature(Builder $query, $feature): Builder
     {
@@ -195,7 +261,9 @@ class Subscription extends Model
     /**
      * Scope a query to exclude a specific feature.
      *
+     * @param  Builder<static>  $query
      * @param  Feature|string  $feature  The feature instance or slug.
+     * @return Builder<static>
      */
     public function scopeWhereNotFeature(Builder $query, $feature): Builder
     {
@@ -205,7 +273,9 @@ class Subscription extends Model
     /**
      * Scope a query to only include subscriptions which includes specific features.
      *
+     * @param  Builder<static>  $query
      * @param  iterable<string>  $features  The array of feature slugs to include.
+     * @return Builder<static>
      */
     public function scopeWhereFeatures(Builder $query, iterable $features): Builder
     {
@@ -220,7 +290,9 @@ class Subscription extends Model
     /**
      * Scope a query to exclude subscriptions which includes specific features.
      *
+     * @param  Builder<static>  $query
      * @param  iterable<string>  $features  The array of feature slugs to exclude.
+     * @return Builder<static>
      */
     public function scopeWhereNotFeatures(Builder $query, iterable $features): Builder
     {
@@ -369,7 +441,7 @@ class Subscription extends Model
      *
      * @throws \LogicException If subscription already renewed
      */
-    public function renew(?Carbon $startAt = null): static
+    public function renew(?Carbon $startAt = null): Subscription
     {
         if ($this->isRenewed()) {
             throw new \LogicException('Subscription has already been renewed');
@@ -377,7 +449,7 @@ class Subscription extends Model
 
         $renewal = SubscriptionHelperService::renew($this, $startAt);
 
-        $renewal->renewed_from_id = $this->id;
+        $renewal->renewed_from_id = $this->getKey();
         $renewal->save();
 
         return $renewal;
@@ -443,9 +515,10 @@ class Subscription extends Model
             return floatval(INF);
         }
 
+        $planFeatureValue = floatval($planFeature->value);
         $featureUsage = $this->totalFeatureUsageInPeriod($slug);
 
-        return $planFeature->value - $featureUsage;
+        return $planFeatureValue - $featureUsage;
     }
 
     /**

@@ -2,9 +2,11 @@
 
 namespace Err0r\Larasub\Resources;
 
+use Err0r\Larasub\Models\Subscription;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
+/** @mixin Subscription */
 class SubscriptionResource extends JsonResource
 {
     /**
@@ -15,7 +17,7 @@ class SubscriptionResource extends JsonResource
     public function toArray(Request $request): array
     {
         return [
-            'id' => $this->id,
+            'id' => $this->getKey(),
             'start_at' => $this->start_at,
             'end_at' => $this->end_at,
             'cancelled_at' => $this->cancelled_at,

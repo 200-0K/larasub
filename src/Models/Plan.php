@@ -14,6 +14,22 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Spatie\Translatable\HasTranslations;
 
+/**
+ * @property string $slug
+ * @property string $name
+ * @property string $description
+ * @property bool $is_active
+ * @property float $price
+ * @property string $currency
+ * @property int $reset_period
+ * @property Period $reset_period_type
+ * @property int $sort_order
+ * @property \Carbon\Carbon $deleted_at
+ * @property \Carbon\Carbon $created_at
+ * @property \Carbon\Carbon $updated_at
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, PlanFeature> $features
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, Subscription> $subscriptions
+ */
 class Plan extends Model
 {
     use HasFactory;
@@ -53,19 +69,25 @@ class Plan extends Model
     }
 
     /**
-     * @return HasMany<PlanFeature>
+     * @return HasMany<PlanFeature, $this>
      */
     public function features(): HasMany
     {
-        return $this->hasMany(config('larasub.models.plan_feature'));
+        /** @var class-string<PlanFeature> */
+        $class = config('larasub.models.plan_feature');
+
+        return $this->hasMany($class);
     }
 
     /**
-     * @return HasMany<Subscription>
+     * @return HasMany<Subscription, $this>
      */
     public function subscriptions(): HasMany
     {
-        return $this->hasMany(config('larasub.models.subscription'));
+        /** @var class-string<Subscription> */
+        $class = config('larasub.models.subscription');
+
+        return $this->hasMany($class);
     }
 
     public function scopeActive(Builder $query): Builder
@@ -80,7 +102,9 @@ class Plan extends Model
     {
         $this->load('features.feature');
 
-        return $this->features->first(fn ($feature) => $feature->feature->slug === $slug);
+        return $this->features->first(
+            fn (PlanFeature $planFeature) => $planFeature->feature->slug === $slug
+        );
     }
 
     public function isActive(): bool

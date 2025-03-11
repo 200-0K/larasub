@@ -9,7 +9,10 @@ trait HasEvent
 {
     public function events(): MorphMany
     {
-        return $this->morphMany(config('larasub.models.event'), 'eventable');
+        /** @var class-string<Event> */
+        $class = config('larasub.models.event');
+
+        return $this->morphMany($class, 'eventable');
     }
 
     public function scopeWhereEventType($query, string $eventType)
@@ -26,6 +29,7 @@ trait HasEvent
      */
     public function addEvent(string $eventType)
     {
+        /** @var Event */
         return $this->events()->create([
             'event_type' => $eventType,
         ]);

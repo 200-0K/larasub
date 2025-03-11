@@ -2,9 +2,11 @@
 
 namespace Err0r\Larasub\Resources;
 
+use Err0r\Larasub\Models\PlanFeature;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
+/** @mixin PlanFeature */
 class PlanFeatureResource extends JsonResource
 {
     public function __construct($resource, private $subscription = null)
@@ -22,7 +24,7 @@ class PlanFeatureResource extends JsonResource
         $isSubscriptionPresent = $this->subscription instanceof (config('larasub.models.subscription'));
 
         return [
-            'id' => $this->id,
+            'id' => $this->getKey(),
             'value' => $this->value,
             'display_value' => $this->display_value,
             'reset_period' => $this->reset_period,

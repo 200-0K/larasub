@@ -2,9 +2,11 @@
 
 namespace Err0r\Larasub\Resources;
 
+use Err0r\Larasub\Models\SubscriptionFeatureUsage;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
+/** @mixin SubscriptionFeatureUsage */
 class SubscriptionFeatureUsageResource extends JsonResource
 {
     /**
@@ -15,7 +17,7 @@ class SubscriptionFeatureUsageResource extends JsonResource
     public function toArray(Request $request): array
     {
         return [
-            'id' => $this->id,
+            'id' => $this->getKey(),
             'value' => $this->value,
             'subscription' => new (config('larasub.resources.subscription'))($this->whenLoaded('subscription')),
             'feature' => new (config('larasub.resources.feature'))($this->whenLoaded('feature')),
