@@ -13,7 +13,6 @@ use Illuminate\Database\Eloquent\Relations\MorphTo;
  * @property string|int $eventable_id
  * @property \Carbon\Carbon $created_at
  * @property \Carbon\Carbon $updated_at
- * @property \Carbon\Carbon $deleted_at
  */
 class Event extends Model
 {

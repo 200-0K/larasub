@@ -57,11 +57,11 @@ class Feature extends Model
     }
 
     /**
-     * @return HasMany<Plan, $this>
+     * @return HasMany<PlanFeature, $this>
      */
     public function plans(): HasMany
     {
-        /** @var class-string<Plan> */
+        /** @var class-string<PlanFeature> */
         $class = config('larasub.models.plan_feature');
 
         return $this->hasMany($class);
