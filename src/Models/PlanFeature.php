@@ -4,8 +4,8 @@ namespace Err0r\Larasub\Models;
 
 use Err0r\Larasub\Enums\FeatureValue;
 use Err0r\Larasub\Enums\Period;
+use Err0r\Larasub\Traits\HasConfigurableIds;
 use Err0r\Larasub\Traits\Sortable;
-use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -24,9 +24,9 @@ use Spatie\Translatable\HasTranslations;
  */
 class PlanFeature extends Model
 {
+    use HasConfigurableIds;
     use HasFactory;
     use HasTranslations;
-    use HasUuids;
     use Sortable;
 
     public $translatable = ['display_value'];
@@ -51,6 +51,11 @@ class PlanFeature extends Model
         parent::__construct($attributes);
 
         $this->setTable(config('larasub.tables.plan_features.name'));
+    }
+
+    protected function usesUuids(): bool
+    {
+        return config('larasub.tables.plan_features.uuid');
     }
 
     /**

@@ -4,10 +4,10 @@ namespace Err0r\Larasub\Models;
 
 use Err0r\Larasub\Builders\PlanBuilder;
 use Err0r\Larasub\Enums\Period;
+use Err0r\Larasub\Traits\HasConfigurableIds;
 use Err0r\Larasub\Traits\Sluggable;
 use Err0r\Larasub\Traits\Sortable;
 use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -32,9 +32,9 @@ use Spatie\Translatable\HasTranslations;
  */
 class Plan extends Model
 {
+    use HasConfigurableIds;
     use HasFactory;
     use HasTranslations;
-    use HasUuids;
     use Sluggable;
     use SoftDeletes;
     use Sortable;
@@ -66,6 +66,11 @@ class Plan extends Model
         parent::__construct($attributes);
 
         $this->setTable(config('larasub.tables.plans.name'));
+    }
+
+    protected function usesUuids(): bool
+    {
+        return config('larasub.tables.plans.uuid');
     }
 
     /**

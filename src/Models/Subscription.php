@@ -5,9 +5,9 @@ namespace Err0r\Larasub\Models;
 use Carbon\Carbon;
 use Err0r\Larasub\Facades\PlanService;
 use Err0r\Larasub\Facades\SubscriptionHelperService;
+use Err0r\Larasub\Traits\HasConfigurableIds;
 use Err0r\Larasub\Traits\HasEvent;
 use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -34,9 +34,9 @@ use Illuminate\Database\Eloquent\SoftDeletes;
  */
 class Subscription extends Model
 {
+    use HasConfigurableIds;
     use HasEvent;
     use HasFactory;
-    use HasUuids;
     use SoftDeletes;
 
     protected $fillable = [
@@ -58,6 +58,11 @@ class Subscription extends Model
         parent::__construct($attributes);
 
         $this->setTable(config('larasub.tables.subscriptions.name'));
+    }
+
+    protected function usesUuids(): bool
+    {
+        return config('larasub.tables.subscriptions.uuid');
     }
 
     /**

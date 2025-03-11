@@ -2,7 +2,7 @@
 
 namespace Err0r\Larasub\Models;
 
-use Illuminate\Database\Eloquent\Concerns\HasUuids;
+use Err0r\Larasub\Traits\HasConfigurableIds;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -18,8 +18,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  */
 class SubscriptionFeatureUsage extends Model
 {
+    use HasConfigurableIds;
     use HasFactory;
-    use HasUuids;
 
     protected $fillable = [
         'subscription_id',
@@ -32,6 +32,11 @@ class SubscriptionFeatureUsage extends Model
         parent::__construct($attributes);
 
         $this->setTable(config('larasub.tables.subscription_feature_usages.name'));
+    }
+
+    protected function usesUuids(): bool
+    {
+        return config('larasub.tables.subscription_feature_usages.uuid');
     }
 
     /**

@@ -2,7 +2,7 @@
 
 namespace Err0r\Larasub\Models;
 
-use Illuminate\Database\Eloquent\Concerns\HasUuids;
+use Err0r\Larasub\Traits\HasConfigurableIds;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\MorphTo;
@@ -16,8 +16,8 @@ use Illuminate\Database\Eloquent\Relations\MorphTo;
  */
 class Event extends Model
 {
+    use HasConfigurableIds;
     use HasFactory;
-    use HasUuids;
 
     protected $fillable = [
         'event_type',
@@ -28,6 +28,11 @@ class Event extends Model
         parent::__construct($attributes);
 
         $this->setTable(config('larasub.tables.events.name'));
+    }
+
+    protected function usesUuids(): bool
+    {
+        return config('larasub.tables.events.uuid');
     }
 
     public function eventable(): MorphTo

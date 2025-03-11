@@ -4,9 +4,9 @@ namespace Err0r\Larasub\Models;
 
 use Err0r\Larasub\Builders\FeatureBuilder;
 use Err0r\Larasub\Enums\FeatureType;
+use Err0r\Larasub\Traits\HasConfigurableIds;
 use Err0r\Larasub\Traits\Sluggable;
 use Err0r\Larasub\Traits\Sortable;
-use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -27,9 +27,9 @@ use Spatie\Translatable\HasTranslations;
  */
 class Feature extends Model
 {
+    use HasConfigurableIds;
     use HasFactory;
     use HasTranslations;
-    use HasUuids;
     use Sluggable;
     use SoftDeletes;
     use Sortable;
@@ -54,6 +54,11 @@ class Feature extends Model
         parent::__construct($attributes);
 
         $this->setTable(config('larasub.tables.features.name'));
+    }
+
+    protected function usesUuids(): bool
+    {
+        return config('larasub.tables.features.uuid');
     }
 
     /**
