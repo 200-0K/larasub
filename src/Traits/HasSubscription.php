@@ -16,7 +16,7 @@ trait HasSubscription
     /**
      * Get the latest active subscription.
      *
-     * @return Subscription
+     * @return Subscription|null
      */
     public function activeSubscription()
     {
