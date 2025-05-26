@@ -2,8 +2,8 @@
 
 namespace Err0r\Larasub\Traits;
 
+use Carbon\Carbon;
 use Err0r\Larasub\Facades\SubscriptionHelperService;
-use Err0r\Larasub\Models\Feature;
 use Err0r\Larasub\Models\PlanFeature;
 use Err0r\Larasub\Models\Subscription;
 use Err0r\Larasub\Models\SubscriptionFeatureUsage;
@@ -127,7 +127,7 @@ trait HasSubscription
     /**
      * Use a specific feature for the first applicable active subscription.
      *
-     * @return SubscriptionFeatureUsage
+     * @return SubscriptionFeatureUsage[]
      *
      * @throws \InvalidArgumentException
      */
@@ -136,5 +136,46 @@ trait HasSubscription
         $subscription = SubscriptionHelperService::validateActiveSubscription($this);
 
         return $subscription->useFeature($slug, $value);
+    }
+
+    /**
+     * Add an add-on for a specific feature.
+     *
+     * @param  string  $slug  The feature slug
+     * @param  string|float|null  $value  Value for the add-on
+     * @param  array{expires_at?: Carbon|string|null, reference?: string|null}  $options  Additional options
+     *                                                                                    - expires_at: Carbon|string|null (when the add-on expires)
+     *                                                                                    - reference: string|null (external reference)
+     * @return \Err0r\Larasub\Models\SubscriptionFeatureAddon
+     */
+    public function addFeatureAddon(string $slug, $value = null, array $options = [])
+    {
+        $subscription = SubscriptionHelperService::validateActiveSubscription($this);
+
+        return $subscription->addFeatureAddon($slug, $value, $options);
+    }
+
+    /**
+     * Get remaining add-on usage for a specific feature.
+     *
+     * @param  string  $slug  The feature slug
+     */
+    public function remainingFeatureAddonUsage(string $slug): float
+    {
+        $subscription = SubscriptionHelperService::validateActiveSubscription($this);
+
+        return $subscription->remainingFeatureAddonUsage($slug);
+    }
+
+    /**
+     * Check if any active add-on provides access to a feature.
+     *
+     * @param  string  $slug  The feature slug
+     */
+    public function hasFeatureAddonAccess(string $slug): bool
+    {
+        $subscription = SubscriptionHelperService::validateActiveSubscription($this);
+
+        return $subscription->hasFeatureAddonAccess($slug);
     }
 }

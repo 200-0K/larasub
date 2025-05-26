@@ -25,6 +25,7 @@ class SubscriptionFeatureUsage extends Model
         'subscription_id',
         'feature_id',
         'value',
+        'addon_id',
     ];
 
     public function __construct(array $attributes = [])
@@ -57,6 +58,17 @@ class SubscriptionFeatureUsage extends Model
     {
         /** @var class-string<Feature> */
         $class = config('larasub.models.feature');
+
+        return $this->belongsTo($class);
+    }
+
+    /**
+     * @return BelongsTo<SubscriptionFeatureAddon, $this>
+     */
+    public function addon(): BelongsTo
+    {
+        /** @var class-string<SubscriptionFeatureAddon> */
+        $class = config('larasub.models.subscription_feature_addon');
 
         return $this->belongsTo($class);
     }

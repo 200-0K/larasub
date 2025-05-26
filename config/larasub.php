@@ -40,13 +40,17 @@ return [
             'name' => env('LARASUB_TABLE_FEATURES', 'features'),
             'uuid' => env('LARASUB_TABLE_FEATURES_UUID', true),
         ],
+        'plan_features' => [
+            'name' => env('LARASUB_TABLE_PLANS_FEATURES', 'plan_features'),
+            'uuid' => env('LARASUB_TABLE_PLANS_FEATURES_UUID', true),
+        ],
         'subscriptions' => [
             'name' => env('LARASUB_TABLE_SUBSCRIPTIONS', 'subscriptions'),
             'uuid' => env('LARASUB_TABLE_SUBSCRIPTIONS_UUID', true),
         ],
-        'plan_features' => [
-            'name' => env('LARASUB_TABLE_PLANS_FEATURES', 'plan_features'),
-            'uuid' => env('LARASUB_TABLE_PLANS_FEATURES_UUID', true),
+        'subscription_feature_addons' => [
+            'name' => env('LARASUB_TABLE_SUBSCRIPTION_FEATURE_ADDONS', 'subscription_feature_addons'),
+            'uuid' => env('LARASUB_TABLE_SUBSCRIPTION_FEATURE_ADDONS_UUID', true),
         ],
         'subscription_feature_usages' => [
             'name' => env('LARASUB_TABLE_SUBSCRIPTION_FEATURE_USAGES', 'subscription_feature_usages'),
@@ -75,8 +79,9 @@ return [
     'models' => [
         'plan' => \Err0r\Larasub\Models\Plan::class,
         'feature' => \Err0r\Larasub\Models\Feature::class,
-        'subscription' => \Err0r\Larasub\Models\Subscription::class,
         'plan_feature' => \Err0r\Larasub\Models\PlanFeature::class,
+        'subscription' => \Err0r\Larasub\Models\Subscription::class,
+        'subscription_feature_addon' => \Err0r\Larasub\Models\SubscriptionFeatureAddon::class,
         'subscription_feature_usages' => \Err0r\Larasub\Models\SubscriptionFeatureUsage::class,
         'event' => \Err0r\Larasub\Models\Event::class,
     ],
@@ -97,6 +102,7 @@ return [
         'feature' => \Err0r\Larasub\Resources\FeatureResource::class,
         'plan_feature' => \Err0r\Larasub\Resources\PlanFeatureResource::class,
         'subscription' => \Err0r\Larasub\Resources\SubscriptionResource::class,
+        'subscription_feature_addon' => \Err0r\Larasub\Resources\SubscriptionFeatureAddonResource::class,
         'subscription_feature_usage' => \Err0r\Larasub\Resources\SubscriptionFeatureUsageResource::class,
     ],
 ];

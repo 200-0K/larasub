@@ -11,8 +11,8 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create(config('larasub.tables.subscription_feature_usages.name'), function (Blueprint $table) {
-            if (config('larasub.tables.subscription_feature_usages.uuid')) {
+        Schema::create(config('larasub.tables.subscription_feature_addons.name'), function (Blueprint $table) {
+            if (config('larasub.tables.subscription_feature_addons.uuid')) {
                 $table->uuid('id')->primary();
             } else {
                 $table->id();
@@ -30,13 +30,15 @@ return new class extends Migration
                 : $table->foreignId('feature_id')
             )->constrained(config('larasub.tables.features.name'))->cascadeOnDelete();
 
-            (
-                config('larasub.tables.subscription_feature_addons.uuid')
-                ? $table->foreignUuid('addon_id')->nullable()
-                : $table->foreignId('addon_id')->nullable()
-            )->constrained(config('larasub.tables.subscription_feature_addons.name'))->nullOnDelete();
+            // Generic value field for both consumable and non-consumable features
+            // Consistent with how plan_features table handles values
+            $table->text('value')->nullable();
 
-            $table->string('value');
+            // Reference for payment tracking, etc.
+            $table->string('reference')->nullable();
+
+            // When this add-on expires
+            $table->timestamp('expires_at')->nullable();
 
             $table->timestamps();
         });
@@ -47,6 +49,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists(config('larasub.tables.subscription_feature_usages.name'));
+        Schema::dropIfExists(config('larasub.tables.subscription_feature_addons.name'));
     }
 };

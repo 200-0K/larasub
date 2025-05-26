@@ -3,6 +3,8 @@
 namespace Err0r\Larasub\Models;
 
 use Carbon\Carbon;
+use Err0r\Larasub\Enums\FeatureType;
+use Err0r\Larasub\Enums\FeatureValue;
 use Err0r\Larasub\Facades\PlanService;
 use Err0r\Larasub\Facades\SubscriptionHelperService;
 use Err0r\Larasub\Traits\HasConfigurableIds;
@@ -15,6 +17,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\Relations\MorphTo;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Facades\DB;
 
 /**
  * @property string|int $plan_id
@@ -127,6 +130,59 @@ class Subscription extends Model
         $class = config('larasub.models.subscription');
 
         return $this->hasOne($class, 'renewed_from_id');
+    }
+
+    /**
+     * @return HasMany<SubscriptionFeatureAddon, $this>
+     */
+    public function featureAddOns(): HasMany
+    {
+        /** @var class-string<SubscriptionFeatureAddon> */
+        $class = config('larasub.models.subscription_feature_addon');
+
+        return $this->hasMany($class);
+    }
+
+    /**
+     * @return HasMany<SubscriptionFeatureAddon, $this>
+     */
+    public function activeFeatureAddOns(): HasMany
+    {
+        /** @var HasMany<SubscriptionFeatureAddon, $this> */
+        return $this->featureAddOns()
+            ->where(function ($query) {
+                $query->whereNull('expires_at')
+                    ->orWhere('expires_at', '>', now());
+            });
+    }
+
+    /**
+     * Get add-ons for a specific feature
+     *
+     * @param  string  $slug  The feature slug
+     * @return HasMany<SubscriptionFeatureAddon, $this>
+     */
+    public function featureAddOn(string $slug): HasMany
+    {
+        /** @var HasMany<SubscriptionFeatureAddon, $this> */
+        return $this
+            ->featureAddOns()
+            ->whereHas('feature', fn ($q) => $q->slug($slug));
+    }
+
+    /**
+     * Get active add-ons for a specific feature
+     *
+     * @param  string  $slug  The feature slug
+     * @return HasMany<SubscriptionFeatureAddon, $this>
+     */
+    public function activeFeatureAddOn(string $slug): HasMany
+    {
+        return $this->featureAddOn($slug)
+            ->where(function ($query) {
+                $query->whereNull('expires_at')
+                    ->orWhere('expires_at', '>', now());
+            });
     }
 
     /**
@@ -483,16 +539,18 @@ class Subscription extends Model
     }
 
     /**
-     * Check if the subscription has an active feature.
-     *
-     * This method checks if the subscription has the feature and if it is active.
+     * Check if the subscription has an active feature, including add-ons.
      *
      * @param  string  $slug  The slug identifier of the feature.
      * @return bool True if the feature is active, false otherwise.
      */
     public function hasActiveFeature(string $slug): bool
     {
-        return $this->hasFeature($slug) && $this->isActive();
+        if (! $this->isActive()) {
+            return false;
+        }
+
+        return $this->hasFeature($slug) || $this->hasFeatureAddonAccess($slug);
     }
 
     /**
@@ -522,8 +580,12 @@ class Subscription extends Model
 
         $planFeatureValue = floatval($planFeature->value);
         $featureUsage = $this->totalFeatureUsageInPeriod($slug);
+        $planRemainingUsage = $planFeatureValue - $featureUsage;
 
-        return $planFeatureValue - $featureUsage;
+        // Include add-on usage
+        $addonRemainingUsage = $this->remainingFeatureAddonUsage($slug);
+
+        return $planRemainingUsage + $addonRemainingUsage;
     }
 
     /**
@@ -571,22 +633,32 @@ class Subscription extends Model
             return false;
         }
 
-        if ($value <= 0) {
-            throw new \InvalidArgumentException('Usage value must be greater than 0');
-        }
-
-        /** @var PlanFeature|null */
-        $planFeature = $this->planFeature($slug);
-
-        if ($planFeature === null) {
-            throw new \InvalidArgumentException("The feature '$slug' is not part of the plan");
-        }
-
-        if ($planFeature->feature->isNonConsumable()) {
+        /** @var Feature|null */
+        $feature = Feature::slug($slug)->first();
+        if (! $feature) {
             return false;
         }
 
-        return $this->remainingFeatureUsage($slug) >= $value;
+        if ($feature->isNonConsumable()) {
+            return false;
+        }
+
+        // Check plan allowance
+        /** @var PlanFeature|null */
+        $planFeature = $this->planFeature($slug);
+
+        // TODO: shouldn't we calculate total remaining?
+
+        $planAllowsUsage = $planFeature &&
+            ($planFeature->isUnlimited() || $this->remainingFeatureUsage($slug) >= $value);
+
+        // If plan doesn't allow usage, check add-ons
+        if (! $planAllowsUsage) {
+            // For features not in plan, or with insufficient plan allowance, check add-ons
+            return $this->remainingFeatureAddonUsage($slug) >= $value;
+        }
+
+        return true;
     }
 
     /**
@@ -594,7 +666,7 @@ class Subscription extends Model
      *
      * @param  string  $slug  The slug identifier of the feature.
      * @param  float  $value  The value to be used for the feature.
-     * @return SubscriptionFeatureUsage The usage record of the feature.
+     * @return SubscriptionFeatureUsage[] The usage record of the feature.
      *
      * @throws \InvalidArgumentException If the feature cannot be used.
      */
@@ -604,15 +676,224 @@ class Subscription extends Model
             throw new \InvalidArgumentException("The feature '$slug' cannot be used");
         }
 
-        /** @var PlanFeature */
+        /** @var Feature|null */
+        $feature = Feature::slug($slug)->first();
+
+        /** @var PlanFeature|null */
         $planFeature = $this->planFeature($slug);
 
+        // Calculate plan-based remaining usage
+        $planFeatureValue = floatval($planFeature->value);
+        $featureUsage = $this->totalFeatureUsageInPeriod($slug);
+        $planRemainingUsage = $planFeatureValue - $featureUsage;
+
+        // If usage exceeds plan allowance, use add-ons
+        if ($planRemainingUsage < $value) {
+            $fromPlan = max($planRemainingUsage, 0);
+            $fromAddon = $value - $fromPlan;
+
+            /** @var SubscriptionFeatureUsage[] */
+            return DB::transaction(function () use ($slug, $fromPlan, $fromAddon, $planFeature) {
+                $featureUsages = [];
+
+                // Create usage record for plan portion if needed
+                if ($fromPlan > 0) {
+                    $featureUsages[] = $this->featuresUsage()->create([
+                        'feature_id' => $planFeature->feature->getKey(),
+                        'value' => $fromPlan,
+                        'addon_id' => null,
+                    ]);
+                }
+
+                // Use add-ons for the remaining amount
+                if ($fromAddon > 0) {
+                    $featureUsages = [
+                        ...$featureUsages,
+                        ...$this->useFeatureAddons($slug, $fromAddon),
+                    ];
+                }
+
+                return $featureUsages;
+            });
+        }
+
+        // Standard usage within plan limits
         /** @var SubscriptionFeatureUsage */
         $featureUsage = $this->featuresUsage()->create([
             'feature_id' => $planFeature->feature->id,
             'value' => $value,
+            'addon_id' => null,
         ]);
 
-        return $featureUsage;
+        return [$featureUsage];
+    }
+
+    /**
+     * Use available add-ons for a feature.
+     *
+     * @param  string  $slug  The slug identifier of the feature.
+     * @param  float  $amount  The amount to use from add-ons.
+     * @return SubscriptionFeatureUsage[] The usage records of the feature.
+     *
+     * @throws \InvalidArgumentException If there are not enough add-ons available.
+     */
+    protected function useFeatureAddons(string $slug, float $amount): array
+    {
+        $addons = $this->activeFeatureAddOn($slug)
+            ->whereHas('feature', fn ($q) => $q->where('type', FeatureType::CONSUMABLE->value))
+            ->orderBy('expires_at')  // Use expiring add-ons first
+            ->orderBy('created_at')  // Then use oldest add-ons
+            ->get();
+
+        // First check total available to avoid partial usage
+        $totalAvailable = 0;
+        foreach ($addons as $addon) {
+            if ($addon->isUnlimited()) {
+                // If any add-on is unlimited, we can satisfy the usage
+                $totalAvailable = $amount;
+                break;
+            }
+            $totalAvailable += $addon->remainingUsage();
+        }
+
+        if ($totalAvailable < $amount) {
+            throw new \InvalidArgumentException("Not enough add-ons available for feature '$slug'");
+        }
+
+        $remainingToUse = $amount;
+        $featureUsages = [];
+
+        // Now use the add-ons in order
+        foreach ($addons as $addon) {
+            if ($remainingToUse <= 0) {
+                break;
+            }
+
+            // For unlimited add-ons, use the entire amount
+            if ($addon->isUnlimited()) {
+                $featureUsages[] = $this->featuresUsage()->create([
+                    'feature_id' => $addon->feature_id,
+                    'value' => $remainingToUse,
+                    'addon_id' => $addon->getKey(),
+                ]);
+                break;
+            }
+
+            $available = $addon->remainingUsage();
+            if ($available <= 0) {
+                continue;
+            }
+
+            $useFromAddon = min($available, $remainingToUse);
+
+            // Create usage record against this add-on
+            $featureUsages[] = $this->featuresUsage()->create([
+                'feature_id' => $addon->feature_id,
+                'value' => $useFromAddon,
+                'addon_id' => $addon->getKey(),
+            ]);
+
+            $remainingToUse -= $useFromAddon;
+        }
+
+        /** @var SubscriptionFeatureUsage[] */
+        return $featureUsages;
+    }
+
+    /**
+     * Add an add-on for a feature.
+     *
+     * @param  string  $slug  The feature slug to add an add-on for
+     * @param  string|float|null  $value  Value for the add-on (amount for consumable, specific values for non-consumable)
+     * @param  array{expires_at?: Carbon|string|null, reference?: string|null}  $options  Additional options
+     *                                                                                    - expires_at: Carbon|string|null (when the add-on expires)
+     *                                                                                    - reference: string|null (external reference)
+     *
+     * @throws \InvalidArgumentException
+     */
+    public function addFeatureAddon(string $slug, $value = null, array $options = []): SubscriptionFeatureAddon
+    {
+        /** @var Feature|null */
+        $feature = Feature::slug($slug)->first();
+
+        if (! $feature) {
+            throw new \InvalidArgumentException("Feature with slug '$slug' does not exist");
+        }
+
+        // For consumable features, value must be provided and valid
+        if ($feature->isConsumable() && $value !== FeatureValue::UNLIMITED->value) {
+            if ($value === null || ! is_numeric($value) || floatval($value) <= 0) {
+                throw new \InvalidArgumentException("For consumable feature '$slug', a positive numeric value must be provided");
+            }
+        }
+
+        $addonData = [
+            'feature_id' => $feature->getKey(),
+            'value' => $value,
+            'reference' => $options['reference'] ?? null,
+        ];
+
+        // Set expiration if provided
+        if (isset($options['expires_at'])) {
+            $addonData['expires_at'] = $options['expires_at'];
+        }
+
+        /** @var SubscriptionFeatureAddon */
+        $addon = $this->featureAddOns()->create($addonData);
+
+        return $addon;
+    }
+
+    /**
+     * Calculate the total remaining add-on usage for a specific feature.
+     *
+     * @param  string  $slug  The feature slug
+     * @return float The total remaining additional usage from active add-ons
+     */
+    public function remainingFeatureAddonUsage(string $slug): float
+    {
+        $addons = $this->activeFeatureAddOn($slug)->get();
+
+        if ($addons->isEmpty()) {
+            return 0;
+        }
+
+        // Check for unlimited add-ons
+        if ($addons->contains(fn ($addon) => $addon->isUnlimited())) {
+            return floatval(INF);
+        }
+
+        // For consumable features, sum up remaining usage
+        $remainingUsage = 0;
+        foreach ($addons as $addon) {
+            if ($addon->isConsumable()) {
+                $remainingUsage += $addon->remainingUsage();
+            }
+        }
+
+        return $remainingUsage;
+    }
+
+    /**
+     * Check if any active add-on provides access to the feature.
+     *
+     * @param  string  $slug  The feature slug
+     * @return bool True if the feature is provided by an add-on
+     */
+    public function hasFeatureAddonAccess(string $slug): bool
+    {
+        // Get feature to check type
+        $feature = Feature::slug($slug)->first();
+        if (! $feature) {
+            return false;
+        }
+
+        // For non-consumable features, check if any active add-on exists
+        if ($feature->isNonConsumable()) {
+            return $this->activeFeatureAddOn($slug)->exists();
+        }
+
+        // For consumable features, check if there's remaining usage
+        return $this->remainingFeatureAddonUsage($slug) > 0;
     }
 }
