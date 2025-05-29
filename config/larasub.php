@@ -36,6 +36,10 @@ return [
             'name' => env('LARASUB_TABLE_PLANS', 'plans'),
             'uuid' => env('LARASUB_TABLE_PLANS_UUID', true),
         ],
+        'plan_versions' => [
+            'name' => env('LARASUB_TABLE_PLAN_VERSIONS', 'plan_versions'),
+            'uuid' => env('LARASUB_TABLE_PLAN_VERSIONS_UUID', true),
+        ],
         'features' => [
             'name' => env('LARASUB_TABLE_FEATURES', 'features'),
             'uuid' => env('LARASUB_TABLE_FEATURES_UUID', true),
@@ -74,6 +78,7 @@ return [
 
     'models' => [
         'plan' => \Err0r\Larasub\Models\Plan::class,
+        'plan_version' => \Err0r\Larasub\Models\PlanVersion::class,
         'feature' => \Err0r\Larasub\Models\Feature::class,
         'subscription' => \Err0r\Larasub\Models\Subscription::class,
         'plan_feature' => \Err0r\Larasub\Models\PlanFeature::class,
@@ -94,6 +99,7 @@ return [
 
     'resources' => [
         'plan' => \Err0r\Larasub\Resources\PlanResource::class,
+        'plan_version' => \Err0r\Larasub\Resources\PlanVersionResource::class,
         'feature' => \Err0r\Larasub\Resources\FeatureResource::class,
         'plan_feature' => \Err0r\Larasub\Resources\PlanFeatureResource::class,
         'subscription' => \Err0r\Larasub\Resources\SubscriptionResource::class,

@@ -5,18 +5,26 @@ namespace Err0r\Larasub\Builders;
 use Err0r\Larasub\Enums\Period;
 use Err0r\Larasub\Models\Feature;
 use Err0r\Larasub\Models\Plan;
+use Err0r\Larasub\Models\PlanVersion;
 
 class PlanBuilder
 {
-    private array $attributes = [];
+    private array $planAttributes = [];
+
+    private array $versionAttributes = [];
 
     private array $features = [];
 
     public function __construct(string $slug)
     {
-        $this->attributes['slug'] = $slug;
-        $this->attributes['is_active'] = true;
-        $this->attributes['price'] = 0.0;
+        $this->planAttributes['slug'] = $slug;
+        $this->planAttributes['is_active'] = true;
+        $this->planAttributes['sort_order'] = 0;
+
+        $this->versionAttributes['version_number'] = null; // Will be auto-calculated
+        $this->versionAttributes['version_label'] = null;
+        $this->versionAttributes['price'] = 0.0;
+        $this->versionAttributes['is_active'] = true;
     }
 
     public static function create(string $slug): self
@@ -26,44 +34,82 @@ class PlanBuilder
 
     public function name($name): self
     {
-        $this->attributes['name'] = $name;
+        $this->planAttributes['name'] = $name;
 
         return $this;
     }
 
     public function description($description): self
     {
-        $this->attributes['description'] = $description;
+        $this->planAttributes['description'] = $description;
+
+        return $this;
+    }
+
+    public function versionNumber(int $versionNumber): self
+    {
+        $this->versionAttributes['version_number'] = $versionNumber;
+
+        return $this;
+    }
+
+    public function versionLabel(string $versionLabel): self
+    {
+        $this->versionAttributes['version_label'] = $versionLabel;
+
+        return $this;
+    }
+
+    /**
+     * @deprecated Use versionLabel() instead
+     */
+    public function version(string $version): self
+    {
+        $this->versionAttributes['version_label'] = $version;
 
         return $this;
     }
 
     public function price(float $price, $currency): self
     {
-        $this->attributes['price'] = $price;
-        $this->attributes['currency'] = $currency;
+        $this->versionAttributes['price'] = $price;
+        $this->versionAttributes['currency'] = $currency;
 
         return $this;
     }
 
     public function resetPeriod(int $period, Period $periodType): self
     {
-        $this->attributes['reset_period'] = $period;
-        $this->attributes['reset_period_type'] = $periodType;
+        $this->versionAttributes['reset_period'] = $period;
+        $this->versionAttributes['reset_period_type'] = $periodType;
 
         return $this;
     }
 
     public function inactive(): self
     {
-        $this->attributes['is_active'] = false;
+        $this->planAttributes['is_active'] = false;
+
+        return $this;
+    }
+
+    public function versionInactive(): self
+    {
+        $this->versionAttributes['is_active'] = false;
+
+        return $this;
+    }
+
+    public function published(): self
+    {
+        $this->versionAttributes['published_at'] = now();
 
         return $this;
     }
 
     public function sortOrder(int $order): self
     {
-        $this->attributes['sort_order'] = $order;
+        $this->planAttributes['sort_order'] = $order;
 
         return $this;
     }
@@ -85,17 +131,40 @@ class PlanBuilder
 
     public function build(): Plan
     {
+        // Create or update the plan
         $plan = Plan::updateOrCreate(
-            ['slug' => $this->attributes['slug']],
-            $this->attributes
+            ['slug' => $this->planAttributes['slug']],
+            $this->planAttributes
         );
 
-        // Attach features
-        foreach ($this->features as $feature) {
-            $plan->features()->updateOrCreate(
-                ['feature_id' => $feature['feature_id']],
-                $feature
+        // Auto-calculate version number if not set
+        if ($this->versionAttributes['version_number'] === null) {
+            $latestVersion = $plan->versions()->max('version_number') ?? 0;
+            $this->versionAttributes['version_number'] = $latestVersion + 1;
+        }
+
+        // Create or update the plan version
+        $this->versionAttributes['plan_id'] = $plan->getKey();
+        $planVersion = PlanVersion::updateOrCreate(
+            ['plan_id' => $plan->getKey(), 'version_number' => $this->versionAttributes['version_number']],
+            $this->versionAttributes
+        );
+
+        // Attach features to the plan version
+        foreach ($this->features as $featureData) {
+            // The plan_version_id is automatically set by the relationship, but let's be explicit
+            $featureData['plan_version_id'] = $planVersion->getKey();
+
+            $planVersion->features()->updateOrCreate(
+                ['feature_id' => $featureData['feature_id']],
+                $featureData
             );
+        }
+
+        // Delete features that are not in the new features array (only if features were provided)
+        if (! empty($this->features)) {
+            $featureIds = array_column($this->features, 'feature_id');
+            $planVersion->features()->whereNotIn('feature_id', $featureIds)->delete();
         }
 
         return $plan;

@@ -3,14 +3,13 @@
 namespace Err0r\Larasub\Models;
 
 use Err0r\Larasub\Builders\PlanBuilder;
-use Err0r\Larasub\Enums\Period;
 use Err0r\Larasub\Traits\HasConfigurableIds;
 use Err0r\Larasub\Traits\Sluggable;
-use Err0r\Larasub\Traits\Sortable;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasManyThrough;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Spatie\Translatable\HasTranslations;
 
@@ -19,14 +18,11 @@ use Spatie\Translatable\HasTranslations;
  * @property string $name
  * @property string $description
  * @property bool $is_active
- * @property float $price
- * @property string $currency
- * @property int $reset_period
- * @property Period $reset_period_type
- * @property int $sort_order
  * @property \Carbon\Carbon $deleted_at
  * @property \Carbon\Carbon $created_at
  * @property \Carbon\Carbon $updated_at
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, PlanVersion> $versions
+ * @property-read PlanVersion $currentVersion
  * @property-read \Illuminate\Database\Eloquent\Collection<int, PlanFeature> $features
  * @property-read \Illuminate\Database\Eloquent\Collection<int, Subscription> $subscriptions
  */
@@ -37,27 +33,19 @@ class Plan extends Model
     use HasTranslations;
     use Sluggable;
     use SoftDeletes;
-    use Sortable;
 
-    public $translatable = ['name', 'description', 'currency'];
+    public $translatable = ['name', 'description'];
 
     protected $fillable = [
         'slug',
         'name',
         'description',
         'is_active',
-        'price',
-        'currency',
-        'reset_period',
-        'reset_period_type',
         'sort_order',
     ];
 
     protected $casts = [
         'is_active' => 'boolean',
-        'price' => 'float',
-        'reset_period' => 'integer',
-        'reset_period_type' => Period::class,
         'sort_order' => 'integer',
     ];
 
@@ -74,25 +62,64 @@ class Plan extends Model
     }
 
     /**
-     * @return HasMany<PlanFeature, $this>
+     * @return HasMany<PlanVersion, $this>
      */
-    public function features(): HasMany
+    public function versions(): HasMany
     {
-        /** @var class-string<PlanFeature> */
-        $class = config('larasub.models.plan_feature');
+        // TODO: test
+        /** @var class-string<PlanVersion> */
+        $class = config('larasub.models.plan_version');
 
         return $this->hasMany($class);
     }
 
     /**
-     * @return HasMany<Subscription, $this>
+     * Get the current active version of the plan
      */
-    public function subscriptions(): HasMany
+    public function currentVersion()
     {
-        /** @var class-string<Subscription> */
-        $class = config('larasub.models.subscription');
+        // TODO: test
 
-        return $this->hasMany($class);
+        /** @var class-string<PlanVersion> */
+        $planVersionClass = config('larasub.models.plan_version');
+        
+        return $planVersionClass::where('plan_id', $this->getKey())
+            ->active()
+            ->published()
+            ->latest()
+            ->first();
+    }
+
+    /**
+     * @return HasManyThrough<PlanFeature, PlanVersion, $this>
+     */
+    public function features(): HasManyThrough
+    {
+        // TODO: test
+        // Will not this get all features for all versions? is this right?
+
+        /** @var class-string<PlanFeature> */
+        $planFeatureClass = config('larasub.models.plan_feature');
+        /** @var class-string<PlanVersion> */
+        $planVersionClass = config('larasub.models.plan_version');
+
+        return $this->hasManyThrough($planFeatureClass, $planVersionClass, 'plan_id', 'plan_version_id');
+    }
+
+    /**
+     * @return HasManyThrough<Subscription, PlanVersion, $this>
+     */
+    public function subscriptions(): HasManyThrough
+    {
+        // TODO: test
+        // Will not this get all subscriptions for all versions? is this what we want?
+
+        /** @var class-string<Subscription> */
+        $subscriptionClass = config('larasub.models.subscription');
+        /** @var class-string<PlanVersion> */
+        $planVersionClass = config('larasub.models.plan_version');
+
+        return $this->hasManyThrough($subscriptionClass, $planVersionClass, 'plan_id', 'plan_version_id');
     }
 
     public function scopeActive(Builder $query): Builder
@@ -105,9 +132,14 @@ class Plan extends Model
      */
     public function feature(string $slug)
     {
-        $this->load('features.feature');
+        $currentVersion = $this->currentVersion();
+        if (!$currentVersion) {
+            return null;
+        }
 
-        return $this->features->first(
+        $currentVersion->load('features.feature');
+
+        return $currentVersion->features->first(
             fn (PlanFeature $planFeature) => $planFeature->feature->slug === $slug
         );
     }
@@ -119,7 +151,35 @@ class Plan extends Model
 
     public function isFree(): bool
     {
-        return $this->price == 0;
+        $currentVersion = $this->currentVersion();
+        return $currentVersion ? $currentVersion->isFree() : true;
+    }
+
+    /**
+     * Get the price of the current version
+     */
+    public function getPrice(): float
+    {
+        $currentVersion = $this->currentVersion();
+        return $currentVersion ? $currentVersion->price : 0.0;
+    }
+
+    /**
+     * Get the currency of the current version
+     */
+    public function getCurrency()
+    {
+        $currentVersion = $this->currentVersion();
+        return $currentVersion ? $currentVersion->currency : null;
+    }
+
+    /**
+     * Check if the current version is published
+     */
+    public function isPublished(): bool
+    {
+        $currentVersion = $this->currentVersion();
+        return $currentVersion ? $currentVersion->isPublished() : false;
     }
 
     public static function builder(string $slug): PlanBuilder

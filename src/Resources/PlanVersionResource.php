@@ -2,12 +2,12 @@
 
 namespace Err0r\Larasub\Resources;
 
-use Err0r\Larasub\Models\Plan;
+use Err0r\Larasub\Models\PlanVersion;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
-/** @mixin Plan */
-class PlanResource extends JsonResource
+/** @mixin PlanVersion */
+class PlanVersionResource extends JsonResource
 {
     public function __construct($resource, private $subscription = null)
     {
@@ -23,17 +23,18 @@ class PlanResource extends JsonResource
     {
         return [
             'id' => $this->getKey(),
-            'slug' => $this->slug,
-            'name' => $this->name,
-            'description' => $this->description,
+            'plan_id' => $this->resource->plan_id,
+            'version_number' => $this->version_number,
+            'version_label' => $this->version_label,
+            'display_version' => $this->getDisplayVersion(),
+            'price' => $this->price,
+            'currency' => $this->currency,
+            'reset_period' => $this->reset_period,
+            'reset_period_type' => $this->reset_period_type,
             'is_active' => $this->is_active,
-            'current_version' => $this->whenLoaded('currentVersion', function () {
-                return new (config('larasub.resources.plan_version'))($this->currentVersion, $this->subscription);
-            }),
-            'versions' => $this->whenLoaded('versions', function () {
-                return $this->versions->map(function ($version) {
-                    return new (config('larasub.resources.plan_version'))($version, $this->subscription);
-                });
+            'published_at' => $this->published_at,
+            'plan' => $this->whenLoaded('plan', function () {
+                return new (config('larasub.resources.plan'))($this->plan);
             }),
             'features' => $this->whenLoaded('features', function () {
                 return $this->features->map(function ($feature) {
@@ -44,4 +45,4 @@ class PlanResource extends JsonResource
             'updated_at' => $this->updated_at,
         ];
     }
-}
+} 

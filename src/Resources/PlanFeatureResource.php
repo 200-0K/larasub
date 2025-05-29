@@ -30,11 +30,12 @@ class PlanFeatureResource extends JsonResource
             'reset_period' => $this->reset_period,
             'reset_period_type' => $this->reset_period_type,
             'sort_order' => $this->sort_order,
-            'plan' => new (config('larasub.resources.plan'))($this->whenLoaded('plan')),
+            'plan_version' => new (config('larasub.resources.plan_version'))($this->whenLoaded('planVersion')),
+            'plan' => $this->whenLoaded('planVersion.plan', fn () => new (config('larasub.resources.plan'))($this->planVersion->plan)),
             'feature' => new (config('larasub.resources.feature'))($this->whenLoaded('feature')),
             $this->mergeWhen($isSubscriptionPresent && $this->feature->isConsumable(), fn () => [
                 'total_usages' => $this->subscription->totalFeatureUsageInPeriod($this->feature->slug),
-                'remaining_usages' => $this->subscription->remainingFeatureUsage($this->feature->slug),
+                'remaining_usages' => $this->subscription->remainingFeatureUsage($this->feature->slug), // TODO: doesn't this return error for floatval(INF)??
                 'next_reset_at' => $this->subscription->nextAvailableFeatureUsage($this->feature->slug),
             ]),
             'created_at' => $this->created_at,

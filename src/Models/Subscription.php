@@ -17,7 +17,7 @@ use Illuminate\Database\Eloquent\Relations\MorphTo;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 /**
- * @property string|int $plan_id
+ * @property string|int $plan_version_id
  * @property string|int $renewed_from_id
  * @property Carbon $start_at
  * @property Carbon $end_at
@@ -25,7 +25,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
  * @property Carbon $deleted_at
  * @property Carbon $created_at
  * @property Carbon $updated_at
- * @property-read Plan $plan
+ * @property-read PlanVersion $planVersion
  * @property-read Model $subscriber
  * @property-read Subscription $renewedFrom
  * @property-read Subscription $renewal
@@ -40,7 +40,7 @@ class Subscription extends Model
     use SoftDeletes;
 
     protected $fillable = [
-        'plan_id',
+        'plan_version_id',
         'start_at',
         'end_at',
         'cancelled_at',
@@ -66,12 +66,12 @@ class Subscription extends Model
     }
 
     /**
-     * @return BelongsTo<Plan, $this>
+     * @return BelongsTo<PlanVersion, $this>
      */
-    public function plan(): BelongsTo
+    public function planVersion(): BelongsTo
     {
-        /** @var class-string<Plan> */
-        $class = config('larasub.models.plan');
+        /** @var class-string<PlanVersion> */
+        $class = config('larasub.models.plan_version');
 
         return $this->belongsTo($class);
     }
@@ -231,7 +231,7 @@ class Subscription extends Model
             default => Plan::slug($plan)->first(),
         };
 
-        return $query->where('plan_id', $plan->id);
+        return $query->whereHas('planVersion', fn ($q) => $q->where('plan_id', $plan->id));
     }
 
     /**
@@ -260,7 +260,7 @@ class Subscription extends Model
             default => Feature::slug($feature)->first(),
         };
 
-        return $query->whereHas('plan.features.feature', fn ($q) => $q->where('feature_id', $feature->id));
+        return $query->whereHas('planVersion.features.feature', fn ($q) => $q->where('feature_id', $feature->id));
     }
 
     /**
@@ -434,7 +434,7 @@ class Subscription extends Model
     {
         $this->cancelled_at = null;
         $this->start_at ??= $startAt ?? now();
-        $this->end_at = $endAt ?? PlanService::getPlanEndAt($this->plan, $this->start_at);
+        $this->end_at = $endAt ?? PlanService::getPlanEndAt($this->planVersion, $this->start_at);
 
         return $this->save();
     }
@@ -461,14 +461,14 @@ class Subscription extends Model
     }
 
     /**
-     * Retrieve the first plan feature of the subscription's plan by its slug.
+     * Retrieve the first plan feature of the subscription's plan version by its slug.
      *
      * @param  string  $slug  The slug of the feature to retrieve.
      * @return PlanFeature|null The first plan feature matching the given slug.
      */
     public function planFeature(string $slug)
     {
-        return $this->plan->feature($slug);
+        return $this->planVersion->feature($slug);
     }
 
     /**
