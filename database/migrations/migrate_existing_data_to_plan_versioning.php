@@ -62,6 +62,7 @@ return new class extends Migration
             foreach ($plans as $plan) {
                 // Create a version 1.0.0 for each existing plan
                 DB::table($planVersionsTable)->insert([
+                    'id' => Str::uuid(),
                     'plan_id' => $plan->id,
                     'version_number' => 1,
                     'version_label' => '1.0.0',
