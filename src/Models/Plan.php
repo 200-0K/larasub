@@ -82,7 +82,7 @@ class Plan extends Model
 
         /** @var class-string<PlanVersion> */
         $planVersionClass = config('larasub.models.plan_version');
-        
+
         return $planVersionClass::where('plan_id', $this->getKey())
             ->active()
             ->published()
@@ -133,7 +133,7 @@ class Plan extends Model
     public function feature(string $slug)
     {
         $currentVersion = $this->currentVersion();
-        if (!$currentVersion) {
+        if (! $currentVersion) {
             return null;
         }
 
@@ -152,6 +152,7 @@ class Plan extends Model
     public function isFree(): bool
     {
         $currentVersion = $this->currentVersion();
+
         return $currentVersion ? $currentVersion->isFree() : true;
     }
 
@@ -161,6 +162,7 @@ class Plan extends Model
     public function getPrice(): float
     {
         $currentVersion = $this->currentVersion();
+
         return $currentVersion ? $currentVersion->price : 0.0;
     }
 
@@ -170,6 +172,7 @@ class Plan extends Model
     public function getCurrency()
     {
         $currentVersion = $this->currentVersion();
+
         return $currentVersion ? $currentVersion->currency : null;
     }
 
@@ -179,6 +182,7 @@ class Plan extends Model
     public function isPublished(): bool
     {
         $currentVersion = $this->currentVersion();
+
         return $currentVersion ? $currentVersion->isPublished() : false;
     }
 

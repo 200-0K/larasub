@@ -3,8 +3,8 @@
 namespace Err0r\Larasub\Commands;
 
 use Illuminate\Console\Command;
-use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 
 class MigrateToPlanVersioningCommand extends Command
 {
@@ -20,8 +20,9 @@ class MigrateToPlanVersioningCommand extends Command
         $this->newLine();
 
         // Check if migration is needed
-        if (!$this->migrationNeeded()) {
+        if (! $this->migrationNeeded()) {
             $this->info('✅ No migration needed. Your data is already using plan versioning.');
+
             return self::SUCCESS;
         }
 
@@ -29,15 +30,17 @@ class MigrateToPlanVersioningCommand extends Command
         $this->showMigrationSummary();
 
         // Confirm migration unless forced
-        if (!$this->option('force') && !$this->option('dry-run')) {
-            if (!$this->confirm('Do you want to proceed with the migration?')) {
+        if (! $this->option('force') && ! $this->option('dry-run')) {
+            if (! $this->confirm('Do you want to proceed with the migration?')) {
                 $this->info('Migration cancelled.');
+
                 return self::SUCCESS;
             }
         }
 
         if ($this->option('dry-run')) {
             $this->info('🔍 Dry run completed. No changes were made.');
+
             return self::SUCCESS;
         }
 
@@ -47,7 +50,7 @@ class MigrateToPlanVersioningCommand extends Command
         $this->newLine();
         $this->info('✅ Migration completed successfully!');
         $this->info('📝 Don\'t forget to update your code to use the new versioning system.');
-        
+
         return self::SUCCESS;
     }
 
@@ -57,7 +60,7 @@ class MigrateToPlanVersioningCommand extends Command
         $planVersionsTable = config('larasub.tables.plan_versions.name');
 
         // Check if plan_versions table exists
-        if (!Schema::hasTable($planVersionsTable)) {
+        if (! Schema::hasTable($planVersionsTable)) {
             return true;
         }
 
@@ -68,8 +71,8 @@ class MigrateToPlanVersioningCommand extends Command
 
         // Check if there are plans without versions
         $plansWithoutVersions = DB::table($plansTable)
-            ->leftJoin($planVersionsTable, $plansTable . '.id', '=', $planVersionsTable . '.plan_id')
-            ->whereNull($planVersionsTable . '.id')
+            ->leftJoin($planVersionsTable, $plansTable.'.id', '=', $planVersionsTable.'.plan_id')
+            ->whereNull($planVersionsTable.'.id')
             ->count();
 
         return $plansWithoutVersions > 0;
@@ -95,7 +98,7 @@ class MigrateToPlanVersioningCommand extends Command
             ]
         );
         $this->newLine();
-        
+
         $this->warn('⚠️  This migration will run the following steps:');
         $this->line('   1. Create plan_versions table (if not exists)');
         $this->line('   2. Add plan_version_id columns to subscriptions and plan_features');
@@ -112,20 +115,20 @@ class MigrateToPlanVersioningCommand extends Command
         try {
             // Run the specific migrations in order
             $this->info('  📋 Running plan versioning migrations...');
-            
+
             // This will run all pending migrations including our versioning ones
             $this->call('migrate', [
                 '--force' => true,
-                '--step' => true
+                '--step' => true,
             ]);
-            
+
             $this->info('  ✅ All migrations completed successfully');
-            
+
         } catch (\Exception $e) {
-            $this->error('❌ Migration failed: ' . $e->getMessage());
+            $this->error('❌ Migration failed: '.$e->getMessage());
             $this->error('💡 You may need to restore from backup and check your migration files.');
             $this->error('💡 Run "php artisan migrate:status" to check migration status.');
             throw $e;
         }
     }
-} 
+}

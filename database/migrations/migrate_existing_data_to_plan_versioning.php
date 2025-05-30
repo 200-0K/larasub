@@ -1,8 +1,8 @@
 <?php
 
 use Illuminate\Database\Migrations\Migration;
-use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
@@ -15,7 +15,7 @@ return new class extends Migration
         // 1. plan_versions table already exists
         // 2. plan_version_id columns have been added to subscriptions and plan_features tables
         // 3. Original columns still exist in plans table (will be dropped later)
-        
+
         $this->migrateExistingPlansToVersions();
         $this->updateExistingSubscriptions();
         $this->updateExistingPlanFeatures();
@@ -37,15 +37,17 @@ return new class extends Migration
     {
         $plansTable = config('larasub.tables.plans.name');
         $planVersionsTable = config('larasub.tables.plan_versions.name');
-        
+
         // Skip if necessary tables don't exist
-        if (!Schema::hasTable($plansTable)) {
+        if (! Schema::hasTable($plansTable)) {
             echo "Skipping plan version migration: Plans table does not exist.\n";
+
             return;
         }
-        
-        if (!Schema::hasTable($planVersionsTable)) {
+
+        if (! Schema::hasTable($planVersionsTable)) {
             echo "Skipping plan version migration: Plan versions table does not exist.\n";
+
             return;
         }
 
@@ -53,16 +55,16 @@ return new class extends Migration
         if (Schema::hasColumns($plansTable, ['price', 'currency', 'reset_period', 'reset_period_type', 'sort_order'])) {
             // Get all existing plans
             $plans = DB::table($plansTable)->get();
-            
+
             if ($plans->isEmpty()) {
                 echo "No plans found to migrate to plan versions.\n";
+
                 return;
             }
 
             foreach ($plans as $plan) {
-                // Create a version 1.0.0 for each existing plan
-                DB::table($planVersionsTable)->insert([
-                    'id' => Str::uuid(),
+                $data = [
+                    'id' => Str::orderedUuid(),
                     'plan_id' => $plan->id,
                     'version_number' => 1,
                     'version_label' => '1.0.0',
@@ -74,10 +76,16 @@ return new class extends Migration
                     'published_at' => now(),
                     'created_at' => $plan->created_at ?? now(),
                     'updated_at' => $plan->updated_at ?? now(),
-                ]);
+                ];
+
+                if (config('larasub.tables.plan_versions.uuid')) {
+                    $data['id'] = Str::orderedUuid();
+                }
+
+                DB::table($planVersionsTable)->insert($data);
             }
 
-            echo "Migrated " . count($plans) . " plans to plan versions.\n";
+            echo 'Migrated '.count($plans)." plans to plan versions.\n";
         } else {
             echo "Skipping plan version migration: Plans table does not have the required columns or migration already completed.\n";
         }
@@ -90,21 +98,24 @@ return new class extends Migration
     {
         $subscriptionsTable = config('larasub.tables.subscriptions.name');
         $planVersionsTable = config('larasub.tables.plan_versions.name');
-        
+
         // Skip if necessary tables don't exist
-        if (!Schema::hasTable($subscriptionsTable)) {
+        if (! Schema::hasTable($subscriptionsTable)) {
             echo "Skipping subscription update: Subscriptions table does not exist.\n";
+
             return;
         }
-        
-        if (!Schema::hasTable($planVersionsTable)) {
+
+        if (! Schema::hasTable($planVersionsTable)) {
             echo "Skipping subscription update: Plan versions table does not exist.\n";
+
             return;
         }
-        
+
         // Skip if necessary columns don't exist
-        if (!Schema::hasColumn($subscriptionsTable, 'plan_version_id')) {
+        if (! Schema::hasColumn($subscriptionsTable, 'plan_version_id')) {
             echo "Skipping subscription update: Subscriptions table does not have plan_version_id column.\n";
+
             return;
         }
 
@@ -113,9 +124,10 @@ return new class extends Migration
             $subscriptions = DB::table($subscriptionsTable)
                 ->whereNull('plan_version_id')
                 ->get();
-                
+
             if ($subscriptions->isEmpty()) {
                 echo "No subscriptions found that need updating.\n";
+
                 return;
             }
 
@@ -135,7 +147,7 @@ return new class extends Migration
                 }
             }
 
-            echo "Updated " . $updateCount . " of " . count($subscriptions) . " subscriptions to reference plan versions.\n";
+            echo 'Updated '.$updateCount.' of '.count($subscriptions)." subscriptions to reference plan versions.\n";
         } else {
             echo "Skipping subscription update: Subscriptions table does not have plan_id column or migration already completed.\n";
         }
@@ -148,21 +160,24 @@ return new class extends Migration
     {
         $planFeaturesTable = config('larasub.tables.plan_features.name');
         $planVersionsTable = config('larasub.tables.plan_versions.name');
-        
+
         // Skip if necessary tables don't exist
-        if (!Schema::hasTable($planFeaturesTable)) {
+        if (! Schema::hasTable($planFeaturesTable)) {
             echo "Skipping plan features update: Plan features table does not exist.\n";
+
             return;
         }
-        
-        if (!Schema::hasTable($planVersionsTable)) {
+
+        if (! Schema::hasTable($planVersionsTable)) {
             echo "Skipping plan features update: Plan versions table does not exist.\n";
+
             return;
         }
-        
+
         // Skip if necessary columns don't exist
-        if (!Schema::hasColumn($planFeaturesTable, 'plan_version_id')) {
+        if (! Schema::hasColumn($planFeaturesTable, 'plan_version_id')) {
             echo "Skipping plan features update: Plan features table does not have plan_version_id column.\n";
+
             return;
         }
 
@@ -171,9 +186,10 @@ return new class extends Migration
             $planFeatures = DB::table($planFeaturesTable)
                 ->whereNull('plan_version_id')
                 ->get();
-                
+
             if ($planFeatures->isEmpty()) {
                 echo "No plan features found that need updating.\n";
+
                 return;
             }
 
@@ -193,9 +209,9 @@ return new class extends Migration
                 }
             }
 
-            echo "Updated " . $updateCount . " of " . count($planFeatures) . " plan features to reference plan versions.\n";
+            echo 'Updated '.$updateCount.' of '.count($planFeatures)." plan features to reference plan versions.\n";
         } else {
             echo "Skipping plan features update: Plan features table does not have plan_id column or migration already completed.\n";
         }
     }
-}; 
+};

@@ -41,4 +41,4 @@ return new class extends Migration
             $table->string('reset_period_type')->nullable();
         });
     }
-}; 
+};

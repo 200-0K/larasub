@@ -32,4 +32,4 @@ return new class extends Migration
             )->constrained(config('larasub.tables.plans.name'))->cascadeOnDelete();
         });
     }
-}; 
+};

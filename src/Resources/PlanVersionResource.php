@@ -45,4 +45,4 @@ class PlanVersionResource extends JsonResource
             'updated_at' => $this->updated_at,
         ];
     }
-} 
+}

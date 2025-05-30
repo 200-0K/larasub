@@ -49,4 +49,4 @@ return new class extends Migration
     {
         Schema::dropIfExists(config('larasub.tables.plan_versions.name'));
     }
-}; 
+};

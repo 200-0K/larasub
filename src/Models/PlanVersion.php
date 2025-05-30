@@ -188,4 +188,4 @@ class PlanVersion extends Model
     {
         return static::where('plan_id', $planId)->max('version_number') + 1;
     }
-} 
+}
