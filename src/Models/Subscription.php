@@ -3,6 +3,7 @@
 namespace Err0r\Larasub\Models;
 
 use Carbon\Carbon;
+use Err0r\Larasub\Enums\FeatureValue;
 use Err0r\Larasub\Facades\PlanService;
 use Err0r\Larasub\Facades\SubscriptionHelperService;
 use Err0r\Larasub\Traits\HasConfigurableIds;
@@ -255,8 +256,8 @@ class Subscription extends Model
      */
     public function scopeWherePlanVersion(Builder $query, $planVersion): Builder
     {
-        $planVersionId = $planVersion instanceof PlanVersion 
-            ? $planVersion->getKey() 
+        $planVersionId = $planVersion instanceof PlanVersion
+            ? $planVersion->getKey()
             : $planVersion;
 
         return $query->where('plan_version_id', $planVersionId);
@@ -527,11 +528,11 @@ class Subscription extends Model
      * Calculate the remaining usage for a given feature.
      *
      * @param  string  $slug  The slug identifier of the feature.
-     * @return float The remaining usage of the feature.
+     * @return float|FeatureValue The remaining usage of the feature.
      *
      * @throws \InvalidArgumentException If the feature is not part of the plan, is non-consumable, or has no value.
      */
-    public function remainingFeatureUsage(string $slug): float
+    public function remainingFeatureUsage(string $slug): float|FeatureValue
     {
         /** @var PlanFeature|null */
         $planFeature = $this->planFeature($slug);
@@ -545,7 +546,7 @@ class Subscription extends Model
         }
 
         if ($planFeature->isUnlimited()) {
-            return floatval(INF);
+            return FeatureValue::UNLIMITED;
         }
 
         $planFeatureValue = floatval($planFeature->value);
@@ -614,7 +615,13 @@ class Subscription extends Model
             return false;
         }
 
-        return $this->remainingFeatureUsage($slug) >= $value;
+        $remainingUsage = $this->remainingFeatureUsage($slug);
+
+        if ($remainingUsage === FeatureValue::UNLIMITED) {
+            return true;
+        }
+
+        return $remainingUsage >= $value;
     }
 
     /**

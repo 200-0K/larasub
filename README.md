@@ -390,6 +390,29 @@ echo $planFeature->reset_period_type;  // Reset period type
 echo $planFeature->display_value;      // Human-readable value
 ```
 
+### Feature Relationships
+
+```php
+<?php
+
+use Err0r\Larasub\Models\Feature;
+
+// Get a feature instance
+$feature = Feature::slug('api-calls')->first();
+
+// All plan-feature pivot rows for this feature
+$planFeatures = $feature->planFeatures;
+
+// All plan versions that include this feature
+$planVersions = $feature->planVersions;
+
+// All raw subscription feature usage rows
+$usages = $feature->subscriptionFeatureUsages;
+
+// All subscriptions that have used this feature
+$subscriptions = $feature->subscriptions;
+```
+
 ## Plan Versioning
 
 ### Creating Plan Versions

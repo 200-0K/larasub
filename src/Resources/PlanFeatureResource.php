@@ -35,7 +35,7 @@ class PlanFeatureResource extends JsonResource
             'feature' => new (config('larasub.resources.feature'))($this->whenLoaded('feature')),
             $this->mergeWhen($isSubscriptionPresent && $this->feature->isConsumable(), fn () => [
                 'total_usages' => $this->subscription->totalFeatureUsageInPeriod($this->feature->slug),
-                'remaining_usages' => $this->subscription->remainingFeatureUsage($this->feature->slug), // TODO: doesn't this return error for floatval(INF)??
+                'remaining_usages' => $this->subscription->remainingFeatureUsage($this->feature->slug),
                 'next_reset_at' => $this->subscription->nextAvailableFeatureUsage($this->feature->slug),
             ]),
             'created_at' => $this->created_at,
