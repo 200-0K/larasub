@@ -30,8 +30,8 @@ return new class extends Migration
     {
         Schema::table(config('larasub.tables.plan_features.name'), function (Blueprint $table) {
             // Drop the unique constraint first
-            $table->dropUnique(['plan_version_id', 'feature_id']);
             $table->dropForeign(['plan_version_id']);
+            $table->dropUnique(['plan_version_id', 'feature_id']);
             $table->dropColumn('plan_version_id');
         });
     }

@@ -30,7 +30,7 @@ return new class extends Migration
                 config('larasub.tables.plans.uuid')
                 ? $table->foreignUuid('plan_id')
                 : $table->foreignId('plan_id')
-            )->constrained(config('larasub.tables.plans.name'))->cascadeOnDelete();
+            )->before('plan_version_id')->nullable()->constrained(config('larasub.tables.plans.name'))->cascadeOnDelete();
 
             // Restore the unique constraint
             $table->unique(['plan_id', 'feature_id']);
