@@ -4,7 +4,6 @@ namespace Err0r\Larasub\Models;
 
 use Err0r\Larasub\Enums\Period;
 use Err0r\Larasub\Traits\HasConfigurableIds;
-use Err0r\Larasub\Traits\Sortable;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -35,7 +34,6 @@ class PlanVersion extends Model
     use HasFactory;
     use HasTranslations;
     use SoftDeletes;
-    use Sortable;
 
     public $translatable = ['currency'];
 
@@ -183,9 +181,13 @@ class PlanVersion extends Model
 
     /**
      * Get the next version number for this plan
+     *
+     * @param  int|string|Plan  $planId
      */
-    public static function getNextVersionNumber(int $planId): int
+    public static function getNextVersionNumber($planId): int
     {
+        $planId = $planId instanceof Plan ? $planId->getKey() : $planId;
+
         return static::where('plan_id', $planId)->max('version_number') + 1;
     }
 }

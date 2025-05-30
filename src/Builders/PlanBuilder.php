@@ -139,8 +139,7 @@ class PlanBuilder
 
         // Auto-calculate version number if not set
         if ($this->versionAttributes['version_number'] === null) {
-            $latestVersion = $plan->versions()->max('version_number') ?? 0;
-            $this->versionAttributes['version_number'] = $latestVersion + 1;
+            $this->versionAttributes['version_number'] = PlanVersion::getNextVersionNumber($plan);
         }
 
         // Create or update the plan version

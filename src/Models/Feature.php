@@ -9,6 +9,7 @@ use Err0r\Larasub\Traits\Sluggable;
 use Err0r\Larasub\Traits\Sortable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Spatie\Translatable\HasTranslations;
@@ -64,7 +65,7 @@ class Feature extends Model
     /**
      * @return HasMany<PlanFeature, $this>
      */
-    public function plans(): HasMany
+    public function planFeatures(): HasMany
     {
         /** @var class-string<PlanFeature> */
         $class = config('larasub.models.plan_feature');
@@ -73,14 +74,39 @@ class Feature extends Model
     }
 
     /**
+     * @return BelongsToMany<PlanVersion, $this>
+     */
+    public function planVersions(): BelongsToMany
+    {
+        /** @var class-string<PlanVersion> */
+        $related = config('larasub.models.plan_version');
+        $table = config('larasub.tables.plan_features.name');
+
+        return $this->belongsToMany($related, $table, 'feature_id', 'plan_version_id');
+    }
+
+    /**
      * @return HasMany<SubscriptionFeatureUsage, $this>
      */
-    public function subscriptions(): HasMany
+    public function subscriptionFeatureUsages(): HasMany
     {
         /** @var class-string<SubscriptionFeatureUsage> */
         $class = config('larasub.models.subscription_feature_usages');
 
         return $this->hasMany($class);
+    }
+
+    /**
+     * @return BelongsToMany<Subscription, $this>
+     */
+    public function subscriptions(): BelongsToMany
+    {
+        /** @var class-string<Subscription> */
+        $related = config('larasub.models.subscription');
+        $table = config('larasub.tables.subscription_feature_usages.name');
+
+        return $this->belongsToMany($related, $table, 'feature_id', 'subscription_id')
+            ->withPivot(['value']);
     }
 
     public function isConsumable(): bool

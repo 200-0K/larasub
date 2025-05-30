@@ -5,6 +5,7 @@ namespace Err0r\Larasub\Models;
 use Err0r\Larasub\Builders\PlanBuilder;
 use Err0r\Larasub\Traits\HasConfigurableIds;
 use Err0r\Larasub\Traits\Sluggable;
+use Err0r\Larasub\Traits\Sortable;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -33,6 +34,7 @@ class Plan extends Model
     use HasTranslations;
     use Sluggable;
     use SoftDeletes;
+    use Sortable;
 
     public $translatable = ['name', 'description'];
 
@@ -66,7 +68,6 @@ class Plan extends Model
      */
     public function versions(): HasMany
     {
-        // TODO: test
         /** @var class-string<PlanVersion> */
         $class = config('larasub.models.plan_version');
 
@@ -75,11 +76,11 @@ class Plan extends Model
 
     /**
      * Get the current active version of the plan
+     *
+     * @return PlanVersion|null
      */
     public function currentVersion()
     {
-        // TODO: test
-
         /** @var class-string<PlanVersion> */
         $planVersionClass = config('larasub.models.plan_version');
 

@@ -247,6 +247,34 @@ class Subscription extends Model
     }
 
     /**
+     * Scope a query to only include subscriptions with a specific plan version.
+     *
+     * @param  Builder<static>  $query
+     * @param  PlanVersion|string  $planVersion  The plan version instance or ID.
+     * @return Builder<static>
+     */
+    public function scopeWherePlanVersion(Builder $query, $planVersion): Builder
+    {
+        $planVersionId = $planVersion instanceof PlanVersion 
+            ? $planVersion->getKey() 
+            : $planVersion;
+
+        return $query->where('plan_version_id', $planVersionId);
+    }
+
+    /**
+     * Scope a query to exclude a specific plan version.
+     *
+     * @param  Builder<static>  $query
+     * @param  PlanVersion|string  $planVersion  Plan version instance or ID
+     * @return Builder<static>
+     */
+    public function scopeWhereNotPlanVersion(Builder $query, $planVersion): Builder
+    {
+        return $query->whereNot(fn ($q) => $q->wherePlanVersion($planVersion));
+    }
+
+    /**
      * Scope a query to only include subscriptions with a specific feature.
      *
      * @param  Builder<static>  $query
