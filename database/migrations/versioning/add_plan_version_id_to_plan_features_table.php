@@ -17,7 +17,7 @@ return new class extends Migration
                 ? $table->foreignUuid('plan_version_id')
                 : $table->foreignId('plan_version_id')
             )->after('plan_id')->nullable()->constrained(config('larasub.tables.plan_versions.name'))->cascadeOnDelete();
-            
+
             // Add unique constraint to ensure each feature appears only once per plan version
             $table->unique(['plan_version_id', 'feature_id']);
         });

@@ -19,10 +19,10 @@ return new class extends Migration
             }
 
             (
-                config('larasub.tables.plans.uuid')
-                ? $table->foreignUuid('plan_id')
-                : $table->foreignId('plan_id')
-            )->constrained(config('larasub.tables.plans.name'))->cascadeOnDelete();
+                config('larasub.tables.plan_versions.uuid')
+                ? $table->foreignUuid('plan_version_id')
+                : $table->foreignId('plan_version_id')
+            )->constrained(config('larasub.tables.plan_versions.name'))->cascadeOnDelete();
 
             (
                 config('larasub.tables.features.uuid')
@@ -38,7 +38,7 @@ return new class extends Migration
 
             $table->timestamps();
 
-            $table->unique(['plan_id', 'feature_id']);
+            $table->unique(['plan_version_id', 'feature_id']);
         });
     }
 

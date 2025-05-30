@@ -73,7 +73,12 @@ php artisan vendor:publish --tag="larasub-config"
 Run migrations:
 
 ```bash
+# Publish all migrations
 php artisan vendor:publish --tag="larasub-migrations"
+php artisan migrate
+
+# Or for plan versioning upgrade only (v1.x to v2.x users)
+php artisan vendor:publish --tag="larasub-migrations-upgrade-plan-versioning"
 php artisan migrate
 ```
 
@@ -208,14 +213,7 @@ mysqldump -u username -p database_name > backup.sql
 ```bash
 composer update err0r/larasub
 
-# Dry run first (recommended)
-php artisan larasub:migrate-to-versioning --dry-run
-
-# Execute migration
-php artisan larasub:migrate-to-versioning
-
-# Or run manually
-php artisan vendor:publish --tag="larasub-migrations" --force
+php artisan vendor:publish --tag="larasub-migrations-upgrade-plan-versioning"
 php artisan migrate
 ```
 
