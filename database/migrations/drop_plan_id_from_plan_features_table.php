@@ -14,6 +14,7 @@ return new class extends Migration
         Schema::table(config('larasub.tables.plan_features.name'), function (Blueprint $table) {
             if (Schema::hasColumn(config('larasub.tables.plan_features.name'), 'plan_id')) {
                 $table->dropForeign(['plan_id']);
+                $table->dropUnique(['plan_id', 'feature_id']);
                 $table->dropColumn('plan_id');
             }
         });
@@ -30,6 +31,9 @@ return new class extends Migration
                 ? $table->foreignUuid('plan_id')
                 : $table->foreignId('plan_id')
             )->constrained(config('larasub.tables.plans.name'))->cascadeOnDelete();
+
+            // Restore the unique constraint
+            $table->unique(['plan_id', 'feature_id']);
         });
     }
 };

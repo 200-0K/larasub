@@ -16,7 +16,10 @@ return new class extends Migration
                 config('larasub.tables.plan_versions.uuid')
                 ? $table->foreignUuid('plan_version_id')
                 : $table->foreignId('plan_version_id')
-            )->nullable()->constrained(config('larasub.tables.plan_versions.name'))->cascadeOnDelete();
+            )->after('plan_id')->nullable()->constrained(config('larasub.tables.plan_versions.name'))->cascadeOnDelete();
+            
+            // Add unique constraint to ensure each feature appears only once per plan version
+            $table->unique(['plan_version_id', 'feature_id']);
         });
     }
 
@@ -26,6 +29,8 @@ return new class extends Migration
     public function down(): void
     {
         Schema::table(config('larasub.tables.plan_features.name'), function (Blueprint $table) {
+            // Drop the unique constraint first
+            $table->dropUnique(['plan_version_id', 'feature_id']);
             $table->dropForeign(['plan_version_id']);
             $table->dropColumn('plan_version_id');
         });

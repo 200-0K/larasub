@@ -16,7 +16,7 @@ return new class extends Migration
                 config('larasub.tables.plan_versions.uuid')
                 ? $table->foreignUuid('plan_version_id')
                 : $table->foreignId('plan_version_id')
-            )->nullable()->constrained(config('larasub.tables.plan_versions.name'))->cascadeOnDelete();
+            )->after('plan_id')->nullable()->constrained(config('larasub.tables.plan_versions.name'))->cascadeOnDelete();
         });
     }
 
