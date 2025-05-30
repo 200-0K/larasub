@@ -13,6 +13,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 use Spatie\Translatable\HasTranslations;
 
 /**
+ * @property string|int $plan_id
  * @property int $version_number
  * @property string $version_label
  * @property float $price

@@ -28,7 +28,8 @@ return new class extends Migration
     public function down(): void
     {
         // This migration is not reversible as it involves data transformation
-        throw new \Exception('This migration cannot be reversed. Please restore from backup if needed.');
+        echo "WARNING: This migration cannot be reversed as it involves data transformation.\n";
+        echo "If you need to rollback, please restore from a backup taken before running this migration.\n";
     }
 
     /**
