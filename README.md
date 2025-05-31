@@ -44,7 +44,7 @@ A powerful and flexible subscription management system for Laravel applications 
 
 - [Installation](#installation)
 - [Quick Start](#quick-start)
-- [Migration from v1.x to v2.x](#migration-from-v1x-to-v2x-plan-versioning)
+- [Migration from v2.x to v3.x](#migration-from-v2x-to-v3x-plan-versioning)
 - [Core Concepts](#core-concepts)
 - [Subscription Management](#subscription-management)
 - [Feature Management](#feature-management)
@@ -75,10 +75,6 @@ Run migrations:
 ```bash
 # Publish all migrations
 php artisan vendor:publish --tag="larasub-migrations"
-php artisan migrate
-
-# Or for plan versioning upgrade only (v1.x to v2.x users)
-php artisan vendor:publish --tag="larasub-migrations-upgrade-plan-versioning"
 php artisan migrate
 ```
 
@@ -199,9 +195,9 @@ if ($user->canUseFeature('api-calls', 5)) {
 $remaining = $user->remainingFeatureUsage('api-calls');
 ```
 
-## Migration from v1.x to v2.x (Plan Versioning)
+## Migration from v2.x to v3.x (Plan Versioning)
 
-If upgrading from v1.x, follow these steps:
+If upgrading from v2.x, follow these steps:
 
 ### 1. Backup Your Database
 ```bash
@@ -213,25 +209,30 @@ mysqldump -u username -p database_name > backup.sql
 ```bash
 composer update err0r/larasub
 
+# See a summary of required changes without affecting the database
+php artisan larasub:migrate-to-versioning --dry-run
+
 php artisan vendor:publish --tag="larasub-migrations-upgrade-plan-versioning"
 php artisan migrate
 ```
 
 ### 3. Update Your Code
 
-**Before (v1.x):**
+**Before (v2.x):**
 ```php
 // Accessing plan properties directly
 $price = $subscription->plan->price;
 $features = $subscription->plan->features;
 ```
 
-**After (v2.x):**
+**After (v3.x):**
 ```php
 // Access through plan version
 $price = $subscription->planVersion->price;
 $features = $subscription->planVersion->features;
 ```
+
+See [Changelog](./CHANGELOG.md)
 
 ## Core Concepts
 
@@ -604,7 +605,7 @@ The package provides several Artisan commands:
 
 ### Migration Command
 ```bash
-# Migrate from v1.x to v2.x with plan versioning
+# Migrate from v2.x to v3.x with plan versioning
 php artisan larasub:migrate-to-versioning
 
 # Dry run to preview changes

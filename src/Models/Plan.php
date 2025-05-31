@@ -20,6 +20,7 @@ use Spatie\Translatable\HasTranslations;
  * @property string $name
  * @property ?string $description
  * @property bool $is_active
+ * @property int $sort_order
  * @property ?\Carbon\Carbon $deleted_at
  * @property \Carbon\Carbon $created_at
  * @property \Carbon\Carbon $updated_at

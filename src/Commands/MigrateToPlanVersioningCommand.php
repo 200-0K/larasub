@@ -92,7 +92,7 @@ class MigrateToPlanVersioningCommand extends Command
         $this->table(
             ['Item', 'Count', 'Action'],
             [
-                ['Plans', $plansCount, 'Convert to plan versions (v1.0.0)'],
+                ['Plans', $plansCount, 'Convert to plan versions'],
                 ['Subscriptions', $subscriptionsCount, 'Update to reference plan versions'],
                 ['Plan Features', $planFeaturesCount, 'Update to reference plan versions'],
             ]

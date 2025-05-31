@@ -2,7 +2,7 @@
 
 All notable changes to `larasub` will be documented in this file.
 
-## [2.0.0] - TBD
+## [3.0.0]
 
 ### ⚠️ BREAKING CHANGES
 

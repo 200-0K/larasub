@@ -27,17 +27,13 @@ class PlanResource extends JsonResource
             'name' => $this->name,
             'description' => $this->description,
             'is_active' => $this->is_active,
+            'sort_order' => $this->sort_order,
             'current_version' => $this->whenLoaded('currentVersion', function () {
                 return new (config('larasub.resources.plan_version'))($this->currentVersion, $this->subscription);
             }),
             'versions' => $this->whenLoaded('versions', function () {
                 return $this->versions->map(function ($version) {
                     return new (config('larasub.resources.plan_version'))($version, $this->subscription);
-                });
-            }),
-            'features' => $this->whenLoaded('features', function () {
-                return $this->features->map(function ($feature) {
-                    return new (config('larasub.resources.plan_feature'))($feature, $this->subscription);
                 });
             }),
             'created_at' => $this->created_at,

@@ -60,16 +60,6 @@ class PlanBuilder
         return $this;
     }
 
-    /**
-     * @deprecated Use versionLabel() instead
-     */
-    public function version(string $version): self
-    {
-        $this->versionAttributes['version_label'] = $version;
-
-        return $this;
-    }
-
     public function price(float $price, $currency): self
     {
         $this->versionAttributes['price'] = $price;

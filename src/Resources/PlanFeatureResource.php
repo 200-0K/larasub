@@ -31,7 +31,6 @@ class PlanFeatureResource extends JsonResource
             'reset_period_type' => $this->reset_period_type,
             'sort_order' => $this->sort_order,
             'plan_version' => new (config('larasub.resources.plan_version'))($this->whenLoaded('planVersion')),
-            'plan' => $this->whenLoaded('planVersion.plan', fn () => new (config('larasub.resources.plan'))($this->planVersion->plan)),
             'feature' => new (config('larasub.resources.feature'))($this->whenLoaded('feature')),
             $this->mergeWhen($isSubscriptionPresent && $this->feature->isConsumable(), fn () => [
                 'total_usages' => $this->subscription->totalFeatureUsageInPeriod($this->feature->slug),
