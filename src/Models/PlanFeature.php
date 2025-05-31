@@ -12,10 +12,10 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Spatie\Translatable\HasTranslations;
 
 /**
- * @property string $value
- * @property string $display_value
- * @property int $reset_period
- * @property Period $reset_period_type
+ * @property ?string $value
+ * @property ?string $display_value
+ * @property ?int $reset_period
+ * @property ?Period $reset_period_type
  * @property int $sort_order
  * @property \Carbon\Carbon $created_at
  * @property \Carbon\Carbon $updated_at

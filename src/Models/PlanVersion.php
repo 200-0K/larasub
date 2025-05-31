@@ -15,14 +15,14 @@ use Spatie\Translatable\HasTranslations;
 /**
  * @property string|int $plan_id
  * @property int $version_number
- * @property string $version_label
+ * @property ?string $version_label
  * @property float $price
  * @property string $currency
- * @property int $reset_period
- * @property Period $reset_period_type
+ * @property ?int $reset_period
+ * @property ?Period $reset_period_type
  * @property bool $is_active
- * @property \Carbon\Carbon $published_at
- * @property \Carbon\Carbon $deleted_at
+ * @property ?\Carbon\Carbon $published_at
+ * @property ?\Carbon\Carbon $deleted_at
  * @property \Carbon\Carbon $created_at
  * @property \Carbon\Carbon $updated_at
  * @property-read Plan $plan

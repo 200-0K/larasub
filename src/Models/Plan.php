@@ -11,19 +11,20 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasManyThrough;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Spatie\Translatable\HasTranslations;
 
 /**
  * @property string $slug
  * @property string $name
- * @property string $description
+ * @property ?string $description
  * @property bool $is_active
- * @property \Carbon\Carbon $deleted_at
+ * @property ?\Carbon\Carbon $deleted_at
  * @property \Carbon\Carbon $created_at
  * @property \Carbon\Carbon $updated_at
  * @property-read \Illuminate\Database\Eloquent\Collection<int, PlanVersion> $versions
- * @property-read PlanVersion $currentVersion
+ * @property-read ?PlanVersion $currentVersion
  * @property-read \Illuminate\Database\Eloquent\Collection<int, PlanFeature> $features
  * @property-read \Illuminate\Database\Eloquent\Collection<int, Subscription> $subscriptions
  */
@@ -75,20 +76,19 @@ class Plan extends Model
     }
 
     /**
-     * Get the current active version of the plan
+     * Get the current active version of the plan as a relationship
      *
-     * @return PlanVersion|null
+     * @return HasOne<PlanVersion, $this>
      */
-    public function currentVersion()
+    public function currentVersion(): HasOne
     {
         /** @var class-string<PlanVersion> */
-        $planVersionClass = config('larasub.models.plan_version');
+        $class = config('larasub.models.plan_version');
 
-        return $planVersionClass::where('plan_id', $this->getKey())
+        return $this->hasOne($class)
             ->active()
             ->published()
-            ->latest()
-            ->first();
+            ->latest('version_number');
     }
 
     /**
@@ -133,7 +133,7 @@ class Plan extends Model
      */
     public function feature(string $slug)
     {
-        $currentVersion = $this->currentVersion();
+        $currentVersion = $this->currentVersion;
         if (! $currentVersion) {
             return null;
         }
@@ -152,7 +152,7 @@ class Plan extends Model
 
     public function isFree(): bool
     {
-        $currentVersion = $this->currentVersion();
+        $currentVersion = $this->currentVersion;
 
         return $currentVersion ? $currentVersion->isFree() : true;
     }
@@ -162,7 +162,7 @@ class Plan extends Model
      */
     public function getPrice(): float
     {
-        $currentVersion = $this->currentVersion();
+        $currentVersion = $this->currentVersion;
 
         return $currentVersion ? $currentVersion->price : 0.0;
     }
@@ -172,7 +172,7 @@ class Plan extends Model
      */
     public function getCurrency()
     {
-        $currentVersion = $this->currentVersion();
+        $currentVersion = $this->currentVersion;
 
         return $currentVersion ? $currentVersion->currency : null;
     }
@@ -182,7 +182,7 @@ class Plan extends Model
      */
     public function isPublished(): bool
     {
-        $currentVersion = $this->currentVersion();
+        $currentVersion = $this->currentVersion;
 
         return $currentVersion ? $currentVersion->isPublished() : false;
     }

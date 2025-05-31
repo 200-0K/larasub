@@ -157,7 +157,7 @@ final class SubscriptionHelperService
         // Get the plan version to use
         $planVersion = $planOrVersion instanceof \Err0r\Larasub\Models\PlanVersion
             ? $planOrVersion
-            : $planOrVersion->currentVersion();
+            : $planOrVersion->currentVersion;
 
         if (! $planVersion) {
             throw new \InvalidArgumentException('No active plan version found');

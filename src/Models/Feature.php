@@ -17,10 +17,10 @@ use Spatie\Translatable\HasTranslations;
 /**
  * @property string $slug
  * @property string $name
- * @property string $description
+ * @property ?string $description
  * @property FeatureType $type
  * @property int $sort_order
- * @property \Carbon\Carbon $deleted_at
+ * @property ?\Carbon\Carbon $deleted_at
  * @property \Carbon\Carbon $created_at
  * @property \Carbon\Carbon $updated_at
  * @property-read \Illuminate\Database\Eloquent\Collection<int, PlanFeature> $plans

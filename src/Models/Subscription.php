@@ -19,11 +19,11 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 
 /**
  * @property string|int $plan_version_id
- * @property string|int $renewed_from_id
- * @property Carbon $start_at
- * @property Carbon $end_at
+ * @property string|int|null $renewed_from_id
+ * @property ?Carbon $start_at
+ * @property ?Carbon $end_at
  * @property ?Carbon $cancelled_at
- * @property Carbon $deleted_at
+ * @property ?Carbon $deleted_at
  * @property Carbon $created_at
  * @property Carbon $updated_at
  * @property-read PlanVersion $planVersion
@@ -644,7 +644,7 @@ class Subscription extends Model
 
         /** @var SubscriptionFeatureUsage */
         $featureUsage = $this->featuresUsage()->create([
-            'feature_id' => $planFeature->feature->id,
+            'feature_id' => $planFeature->feature->getKey(),
             'value' => $value,
         ]);
 
