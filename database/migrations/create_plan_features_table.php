@@ -34,6 +34,7 @@ return new class extends Migration
             $table->json('display_value')->nullable();
             $table->unsignedSmallInteger('reset_period')->nullable();
             $table->string('reset_period_type')->nullable();
+            $table->boolean('is_hidden')->default(false);
             $table->unsignedSmallInteger('sort_order')->default(0);
 
             $table->timestamps();

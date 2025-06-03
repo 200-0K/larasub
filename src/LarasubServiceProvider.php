@@ -45,6 +45,7 @@ class LarasubServiceProvider extends PackageServiceProvider
                 'versioning/drop_plan_id_from_plan_features_table',
                 'versioning/drop_plan_id_from_subscriptions_table',
                 'versioning/drop_versioned_columns_from_plans_table',
+                'versioning/add_is_hidden_to_plan_features_table',
             ];
 
             $publishArray = [];

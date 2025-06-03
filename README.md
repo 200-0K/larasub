@@ -387,7 +387,55 @@ echo $planFeature->value;              // Usage limit
 echo $planFeature->reset_period;       // Reset frequency
 echo $planFeature->reset_period_type;  // Reset period type
 echo $planFeature->display_value;      // Human-readable value
+echo $planFeature->is_hidden;          // Whether feature is hidden from users
 ```
+
+### Feature Visibility
+
+Control which features are displayed to end users while keeping them functional for internal logic:
+
+```php
+<?php
+
+// Creating hidden features
+$plan = PlanBuilder::create('premium')
+    ->addFeature('api-calls', fn ($feature) => $feature
+        ->value(1000)
+        ->displayValue('1,000 API calls')
+        // Feature is visible to users by default
+    )
+    ->addFeature('internal-tracking', fn ($feature) => $feature
+        ->value('enabled')
+        ->displayValue('Internal tracking')
+        ->hidden()  // Hide this feature from user interfaces
+    )
+    ->addFeature('admin-feature', fn ($feature) => $feature
+        ->value('enabled')
+        ->hidden(true)  // Explicitly hide
+    )
+    ->addFeature('visible-feature', fn ($feature) => $feature
+        ->value('enabled')
+        ->visible()  // Explicitly make visible (default behavior)
+    )
+    ->build();
+
+// Query visible/hidden features
+$visibleFeatures = $planVersion->visibleFeatures;  // Only visible features
+$allFeatures = $planVersion->features;             // All features (visible + hidden)
+
+// Using scopes
+$visible = PlanFeature::visible()->get();          // All visible plan features
+$hidden = PlanFeature::hidden()->get();            // All hidden plan features
+
+// Check visibility
+$feature = $planVersion->features->first();
+$feature->isVisible();  // true/false
+$feature->isHidden();   // true/false
+```
+
+**API Behavior:**
+- Hidden features remain fully functional for subscription logic and usage tracking
+- Only the display/visibility to end users is affected
 
 ### Feature Relationships
 

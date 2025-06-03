@@ -52,6 +52,20 @@ class PlanFeatureBuilder
         return $this;
     }
 
+    public function hidden(bool $isHidden = true): self
+    {
+        $this->attributes['is_hidden'] = $isHidden;
+
+        return $this;
+    }
+
+    public function visible(): self
+    {
+        $this->attributes['is_hidden'] = false;
+
+        return $this;
+    }
+
     public function build(): array
     {
         $featureModel = Feature::where('slug', $this->attributes['slug'])->firstOrFail();
@@ -66,6 +80,7 @@ class PlanFeatureBuilder
             'display_value' => $this->attributes['display_value'] ?? null,
             'reset_period' => $this->attributes['reset_period'] ?? null,
             'reset_period_type' => $this->attributes['reset_period_type'] ?? null,
+            'is_hidden' => $this->attributes['is_hidden'] ?? false,
             'sort_order' => $this->attributes['sort_order'] ?? null,
         ];
     }
