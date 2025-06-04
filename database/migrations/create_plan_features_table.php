@@ -19,10 +19,10 @@ return new class extends Migration
             }
 
             (
-                config('larasub.tables.plans.uuid')
-                ? $table->foreignUuid('plan_id')
-                : $table->foreignId('plan_id')
-            )->constrained(config('larasub.tables.plans.name'))->cascadeOnDelete();
+                config('larasub.tables.plan_versions.uuid')
+                ? $table->foreignUuid('plan_version_id')
+                : $table->foreignId('plan_version_id')
+            )->constrained(config('larasub.tables.plan_versions.name'))->cascadeOnDelete();
 
             (
                 config('larasub.tables.features.uuid')
@@ -34,11 +34,12 @@ return new class extends Migration
             $table->json('display_value')->nullable();
             $table->unsignedSmallInteger('reset_period')->nullable();
             $table->string('reset_period_type')->nullable();
+            $table->boolean('is_hidden')->default(false);
             $table->unsignedSmallInteger('sort_order')->default(0);
 
             $table->timestamps();
 
-            $table->unique(['plan_id', 'feature_id']);
+            $table->unique(['plan_version_id', 'feature_id']);
         });
     }
 

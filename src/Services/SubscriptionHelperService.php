@@ -142,11 +142,11 @@ final class SubscriptionHelperService
 
     /**
      * @param  \Illuminate\Database\Eloquent\Model  $subscriber
-     * @param  \Err0r\Larasub\Models\Plan  $plan
+     * @param  \Err0r\Larasub\Models\Plan|\Err0r\Larasub\Models\PlanVersion  $planOrVersion
      * @param  \Err0r\Larasub\Models\Subscription|null  $renewedFrom
      * @return \Err0r\Larasub\Models\Subscription
      */
-    public function subscribe($subscriber, $plan, ?Carbon $startAt = null, ?Carbon $endAt = null, bool $pending = false, $renewedFrom = null)
+    public function subscribe($subscriber, $planOrVersion, ?Carbon $startAt = null, ?Carbon $endAt = null, bool $pending = false, $renewedFrom = null)
     {
         $startAt ??= now();
 
@@ -154,18 +154,27 @@ final class SubscriptionHelperService
             $startAt = null;
         }
 
-        if ($startAt !== null && $endAt === null && $plan->reset_period !== null && $plan->reset_period_type !== null) {
-            $endAt = PlanService::getPlanEndAt($plan, $startAt);
+        // Get the plan version to use
+        $planVersion = $planOrVersion instanceof \Err0r\Larasub\Models\PlanVersion
+            ? $planOrVersion
+            : $planOrVersion->currentVersion;
+
+        if (! $planVersion) {
+            throw new \InvalidArgumentException('No active plan version found');
+        }
+
+        if ($startAt !== null && $endAt === null && $planVersion->reset_period !== null && $planVersion->reset_period_type !== null) {
+            $endAt = PlanService::getPlanEndAt($planVersion, $startAt);
         }
 
         $subscription = new (config('larasub.models.subscription'))([
-            'plan_id' => $plan->id,
+            'plan_version_id' => $planVersion->getKey(),
             'start_at' => $startAt,
             'end_at' => $endAt,
         ]);
 
         if ($renewedFrom) {
-            $subscription->renewed_from_id = $renewedFrom->id;
+            $subscription->renewed_from_id = $renewedFrom->getKey();
         }
 
         if (! method_exists($subscriber, 'subscriptions')) {
@@ -192,6 +201,6 @@ final class SubscriptionHelperService
     {
         $subscriber = $subscription->subscriber;
 
-        return $this->subscribe($subscriber, $subscription->plan, renewedFrom: $subscription);
+        return $this->subscribe($subscriber, $subscription->planVersion, renewedFrom: $subscription);
     }
 }

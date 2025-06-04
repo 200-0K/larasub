@@ -3,6 +3,7 @@
 namespace Err0r\Larasub\Models;
 
 use Carbon\Carbon;
+use Err0r\Larasub\Enums\FeatureValue;
 use Err0r\Larasub\Facades\PlanService;
 use Err0r\Larasub\Facades\SubscriptionHelperService;
 use Err0r\Larasub\Traits\HasConfigurableIds;
@@ -17,15 +18,15 @@ use Illuminate\Database\Eloquent\Relations\MorphTo;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 /**
- * @property string|int $plan_id
- * @property string|int $renewed_from_id
- * @property Carbon $start_at
- * @property Carbon $end_at
+ * @property string|int $plan_version_id
+ * @property string|int|null $renewed_from_id
+ * @property ?Carbon $start_at
+ * @property ?Carbon $end_at
  * @property ?Carbon $cancelled_at
- * @property Carbon $deleted_at
+ * @property ?Carbon $deleted_at
  * @property Carbon $created_at
  * @property Carbon $updated_at
- * @property-read Plan $plan
+ * @property-read PlanVersion $planVersion
  * @property-read Model $subscriber
  * @property-read Subscription $renewedFrom
  * @property-read Subscription $renewal
@@ -40,7 +41,7 @@ class Subscription extends Model
     use SoftDeletes;
 
     protected $fillable = [
-        'plan_id',
+        'plan_version_id',
         'start_at',
         'end_at',
         'cancelled_at',
@@ -66,12 +67,12 @@ class Subscription extends Model
     }
 
     /**
-     * @return BelongsTo<Plan, $this>
+     * @return BelongsTo<PlanVersion, $this>
      */
-    public function plan(): BelongsTo
+    public function planVersion(): BelongsTo
     {
-        /** @var class-string<Plan> */
-        $class = config('larasub.models.plan');
+        /** @var class-string<PlanVersion> */
+        $class = config('larasub.models.plan_version');
 
         return $this->belongsTo($class);
     }
@@ -231,7 +232,7 @@ class Subscription extends Model
             default => Plan::slug($plan)->first(),
         };
 
-        return $query->where('plan_id', $plan->id);
+        return $query->whereHas('planVersion', fn ($q) => $q->where('plan_id', $plan->id));
     }
 
     /**
@@ -244,6 +245,34 @@ class Subscription extends Model
     public function scopeWhereNotPlan(Builder $query, $plan): Builder
     {
         return $query->whereNot(fn ($q) => $q->wherePlan($plan));
+    }
+
+    /**
+     * Scope a query to only include subscriptions with a specific plan version.
+     *
+     * @param  Builder<static>  $query
+     * @param  PlanVersion|string  $planVersion  The plan version instance or ID.
+     * @return Builder<static>
+     */
+    public function scopeWherePlanVersion(Builder $query, $planVersion): Builder
+    {
+        $planVersionId = $planVersion instanceof PlanVersion
+            ? $planVersion->getKey()
+            : $planVersion;
+
+        return $query->where('plan_version_id', $planVersionId);
+    }
+
+    /**
+     * Scope a query to exclude a specific plan version.
+     *
+     * @param  Builder<static>  $query
+     * @param  PlanVersion|string  $planVersion  Plan version instance or ID
+     * @return Builder<static>
+     */
+    public function scopeWhereNotPlanVersion(Builder $query, $planVersion): Builder
+    {
+        return $query->whereNot(fn ($q) => $q->wherePlanVersion($planVersion));
     }
 
     /**
@@ -260,7 +289,7 @@ class Subscription extends Model
             default => Feature::slug($feature)->first(),
         };
 
-        return $query->whereHas('plan.features.feature', fn ($q) => $q->where('feature_id', $feature->id));
+        return $query->whereHas('planVersion.features.feature', fn ($q) => $q->where('feature_id', $feature->id));
     }
 
     /**
@@ -434,7 +463,7 @@ class Subscription extends Model
     {
         $this->cancelled_at = null;
         $this->start_at ??= $startAt ?? now();
-        $this->end_at = $endAt ?? PlanService::getPlanEndAt($this->plan, $this->start_at);
+        $this->end_at = $endAt ?? PlanService::getPlanEndAt($this->planVersion, $this->start_at);
 
         return $this->save();
     }
@@ -461,14 +490,14 @@ class Subscription extends Model
     }
 
     /**
-     * Retrieve the first plan feature of the subscription's plan by its slug.
+     * Retrieve the first plan feature of the subscription's plan version by its slug.
      *
      * @param  string  $slug  The slug of the feature to retrieve.
      * @return PlanFeature|null The first plan feature matching the given slug.
      */
     public function planFeature(string $slug)
     {
-        return $this->plan->feature($slug);
+        return $this->planVersion->feature($slug);
     }
 
     /**
@@ -499,11 +528,11 @@ class Subscription extends Model
      * Calculate the remaining usage for a given feature.
      *
      * @param  string  $slug  The slug identifier of the feature.
-     * @return float The remaining usage of the feature.
+     * @return float|FeatureValue The remaining usage of the feature.
      *
      * @throws \InvalidArgumentException If the feature is not part of the plan, is non-consumable, or has no value.
      */
-    public function remainingFeatureUsage(string $slug): float
+    public function remainingFeatureUsage(string $slug): float|FeatureValue
     {
         /** @var PlanFeature|null */
         $planFeature = $this->planFeature($slug);
@@ -517,7 +546,7 @@ class Subscription extends Model
         }
 
         if ($planFeature->isUnlimited()) {
-            return floatval(INF);
+            return FeatureValue::UNLIMITED;
         }
 
         $planFeatureValue = floatval($planFeature->value);
@@ -586,7 +615,13 @@ class Subscription extends Model
             return false;
         }
 
-        return $this->remainingFeatureUsage($slug) >= $value;
+        $remainingUsage = $this->remainingFeatureUsage($slug);
+
+        if ($remainingUsage === FeatureValue::UNLIMITED) {
+            return true;
+        }
+
+        return $remainingUsage >= $value;
     }
 
     /**
@@ -609,7 +644,7 @@ class Subscription extends Model
 
         /** @var SubscriptionFeatureUsage */
         $featureUsage = $this->featuresUsage()->create([
-            'feature_id' => $planFeature->feature->id,
+            'feature_id' => $planFeature->feature->getKey(),
             'value' => $value,
         ]);
 
