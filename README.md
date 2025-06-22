@@ -3,10 +3,6 @@
 [![Latest Version on Packagist](https://img.shields.io/packagist/v/err0r/larasub.svg?style=flat-square)](https://packagist.org/packages/err0r/larasub)
 [![Total Downloads](https://img.shields.io/packagist/dt/err0r/larasub.svg?style=flat-square)](https://packagist.org/packages/err0r/larasub)
 
-> [!IMPORTANT]  
-> This package is currently under development and is **not yet ready for production use**.  
-> Click the **Watch** button to stay updated and be notified when the package is ready for deployment!
-
 A powerful and flexible subscription management system for Laravel applications with comprehensive plan versioning support.
 
 ## ✨ Features
