@@ -56,6 +56,11 @@ return [
             'name' => env('LARASUB_TABLE_SUBSCRIPTION_FEATURE_USAGES', 'subscription_feature_usages'),
             'uuid' => env('LARASUB_TABLE_SUBSCRIPTION_FEATURE_USAGES_UUID', true),
         ],
+        'subscription_feature_credits' => [
+            'name' => env('LARASUB_TABLE_SUBSCRIPTION_FEATURE_CREDITS', 'subscription_feature_credits'),
+            'uuid' => env('LARASUB_TABLE_SUBSCRIPTION_FEATURE_CREDITS_UUID', true),
+            'granted_by_uuid' => env('LARASUB_TABLE_SUBSCRIPTION_FEATURE_CREDITS_GRANTED_BY_UUID', true),
+        ],
         'events' => [
             'name' => env('LARASUB_TABLE_EVENTS', 'larasub_events'),
             'uuid' => env('LARASUB_TABLE_EVENTS_UUID', true),
@@ -83,6 +88,7 @@ return [
         'subscription' => \Err0r\Larasub\Models\Subscription::class,
         'plan_feature' => \Err0r\Larasub\Models\PlanFeature::class,
         'subscription_feature_usages' => \Err0r\Larasub\Models\SubscriptionFeatureUsage::class,
+        'subscription_feature_credits' => \Err0r\Larasub\Models\SubscriptionFeatureCredit::class,
         'event' => \Err0r\Larasub\Models\Event::class,
     ],
 
@@ -104,5 +110,6 @@ return [
         'plan_feature' => \Err0r\Larasub\Resources\PlanFeatureResource::class,
         'subscription' => \Err0r\Larasub\Resources\SubscriptionResource::class,
         'subscription_feature_usage' => \Err0r\Larasub\Resources\SubscriptionFeatureUsageResource::class,
+        'subscription_feature_credit' => \Err0r\Larasub\Resources\SubscriptionFeatureCreditResource::class,
     ],
 ];

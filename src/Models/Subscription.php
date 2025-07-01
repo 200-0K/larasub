@@ -94,6 +94,17 @@ class Subscription extends Model
     }
 
     /**
+     * @return HasMany<SubscriptionFeatureCredit, $this>
+     */
+    public function extraCredits(): HasMany
+    {
+        /** @var class-string<SubscriptionFeatureCredit> */
+        $class = config('larasub.models.subscription_feature_credits');
+
+        return $this->hasMany($class);
+    }
+
+    /**
      * @return HasMany<SubscriptionFeatureUsage, $this>
      */
     public function featureUsage(string $slug): HasMany
@@ -528,12 +539,17 @@ class Subscription extends Model
      * Calculate the remaining usage for a given feature.
      *
      * @param  string  $slug  The slug identifier of the feature.
+     * @param  bool  $includeExtraCredits  Whether to include extra credits in calculation
      * @return float|FeatureValue The remaining usage of the feature.
      *
      * @throws \InvalidArgumentException If the feature is not part of the plan, is non-consumable, or has no value.
      */
-    public function remainingFeatureUsage(string $slug): float|FeatureValue
+    public function remainingFeatureUsage(string $slug, bool $includeExtraCredits = true): float|FeatureValue
     {
+        if ($includeExtraCredits) {
+            return $this->remainingFeatureUsageWithCredits($slug);
+        }
+
         /** @var PlanFeature|null */
         $planFeature = $this->planFeature($slug);
 
@@ -589,13 +605,18 @@ class Subscription extends Model
      *
      * @param  string  $slug  The slug identifier of the feature.
      * @param  float  $value  The usage value to check.
+     * @param  bool  $includeExtraCredits  Whether to include extra credits in calculation
      * @return bool True if the feature can be used, false otherwise.
      *
      * @throws \InvalidArgumentException If the usage value is less than or equal to 0,
      *                                   or if the feature is not part of the plan.
      */
-    public function canUseFeature(string $slug, float $value): bool
+    public function canUseFeature(string $slug, float $value, bool $includeExtraCredits = true): bool
     {
+        if ($includeExtraCredits) {
+            return $this->canUseFeatureWithCredits($slug, $value);
+        }
+
         if (! $this->isActive()) {
             return false;
         }
@@ -615,7 +636,7 @@ class Subscription extends Model
             return false;
         }
 
-        $remainingUsage = $this->remainingFeatureUsage($slug);
+        $remainingUsage = $this->remainingFeatureUsage($slug, false);
 
         if ($remainingUsage === FeatureValue::UNLIMITED) {
             return true;
@@ -629,13 +650,18 @@ class Subscription extends Model
      *
      * @param  string  $slug  The slug identifier of the feature.
      * @param  float  $value  The value to be used for the feature.
+     * @param  bool  $useExtraCredits  Whether to consume extra credits first
      * @return SubscriptionFeatureUsage The usage record of the feature.
      *
      * @throws \InvalidArgumentException If the feature cannot be used.
      */
-    public function useFeature(string $slug, float $value)
+    public function useFeature(string $slug, float $value, bool $useExtraCredits = true)
     {
-        if (! $this->canUseFeature($slug, $value)) {
+        if ($useExtraCredits) {
+            return $this->useFeatureWithCredits($slug, $value);
+        }
+
+        if (! $this->canUseFeature($slug, $value, false)) {
             throw new \InvalidArgumentException("The feature '$slug' cannot be used");
         }
 
@@ -649,5 +675,249 @@ class Subscription extends Model
         ]);
 
         return $featureUsage;
+    }
+
+    /**
+     * Grant extra credits for a specific feature
+     *
+     * @param string $slug Feature slug
+     * @param float $credits Number of credits to grant
+     * @param array $options Additional options (reason, granted_by, expires_at)
+     * @return SubscriptionFeatureCredit
+     */
+    public function grantExtraCredits(string $slug, float $credits, array $options = []): SubscriptionFeatureCredit
+    {
+        if ($credits <= 0) {
+            throw new \InvalidArgumentException('Credits must be greater than 0');
+        }
+
+        $feature = Feature::slug($slug)->first();
+        if (!$feature) {
+            throw new \InvalidArgumentException("Feature '{$slug}' not found");
+        }
+
+        if ($feature->isNonConsumable()) {
+            throw new \InvalidArgumentException("Feature '{$slug}' is non-consumable and cannot have credits");
+        }
+
+        $data = [
+            'feature_id' => $feature->getKey(),
+            'credits' => $credits,
+            'reason' => $options['reason'] ?? null,
+            'expires_at' => $options['expires_at'] ?? null,
+        ];
+
+        if (isset($options['granted_by'])) {
+            $data['granted_by_type'] = get_class($options['granted_by']);
+            $data['granted_by_id'] = $options['granted_by']->getKey();
+        }
+
+        return $this->extraCredits()->create($data);
+    }
+
+    /**
+     * Get total extra credits for a feature (active only)
+     *
+     * @param string $slug Feature slug
+     * @return float
+     */
+    public function totalExtraCredits(string $slug): float
+    {
+        return $this->extraCredits()
+            ->forFeature($slug)
+            ->active()
+            ->sum('credits');
+    }
+
+    /**
+     * Get extra credits for a feature with query builder
+     *
+     * @param string $slug Feature slug
+     * @return \Illuminate\Database\Eloquent\Builder
+     */
+    public function extraCreditsForFeature(string $slug)
+    {
+        return $this->extraCredits()->forFeature($slug);
+    }
+
+    /**
+     * Enhanced remaining feature usage calculation including extra credits
+     *
+     * @param string $slug Feature slug
+     * @return float|FeatureValue
+     */
+    public function remainingFeatureUsageWithCredits(string $slug): float|FeatureValue
+    {
+        /** @var PlanFeature|null */
+        $planFeature = $this->planFeature($slug);
+
+        if ($planFeature === null) {
+            throw new \InvalidArgumentException("The feature '$slug' is not part of the plan");
+        }
+
+        if ($planFeature->feature->isNonConsumable() || $planFeature->value === null) {
+            throw new \InvalidArgumentException("The feature '$slug' is not consumable or has no value");
+        }
+
+        if ($planFeature->isUnlimited()) {
+            return FeatureValue::UNLIMITED;
+        }
+
+        $planFeatureValue = floatval($planFeature->value);
+        $extraCredits = $this->totalExtraCredits($slug);
+        $totalAvailable = $planFeatureValue + $extraCredits;
+        
+        $featureUsage = $this->totalFeatureUsageInPeriod($slug);
+
+        return $totalAvailable - $featureUsage;
+    }
+
+    /**
+     * Enhanced can use feature check including extra credits
+     *
+     * @param string $slug Feature slug
+     * @param float $value Usage value
+     * @return bool
+     */
+    public function canUseFeatureWithCredits(string $slug, float $value): bool
+    {
+        if (!$this->isActive()) {
+            return false;
+        }
+
+        if ($value <= 0) {
+            throw new \InvalidArgumentException('Usage value must be greater than 0');
+        }
+
+        /** @var PlanFeature|null */
+        $planFeature = $this->planFeature($slug);
+
+        if ($planFeature === null) {
+            throw new \InvalidArgumentException("The feature '$slug' is not part of the plan");
+        }
+
+        if ($planFeature->feature->isNonConsumable()) {
+            return false;
+        }
+
+        $remainingUsage = $this->remainingFeatureUsageWithCredits($slug);
+
+        if ($remainingUsage === FeatureValue::UNLIMITED) {
+            return true;
+        }
+
+        return $remainingUsage >= $value;
+    }
+
+    /**
+     * Use feature with credit consumption priority (extra credits first)
+     *
+     * @param string $slug Feature slug
+     * @param float $value Usage value
+     * @return SubscriptionFeatureUsage
+     */
+    public function useFeatureWithCredits(string $slug, float $value)
+    {
+        if (!$this->canUseFeatureWithCredits($slug, $value)) {
+            throw new \InvalidArgumentException("The feature '$slug' cannot be used");
+        }
+
+        // First, consume extra credits if available
+        $this->consumeExtraCredits($slug, $value);
+
+        // Record the usage as normal
+        /** @var PlanFeature */
+        $planFeature = $this->planFeature($slug);
+
+        /** @var SubscriptionFeatureUsage */
+        $featureUsage = $this->featuresUsage()->create([
+            'feature_id' => $planFeature->feature->getKey(),
+            'value' => $value,
+        ]);
+
+        return $featureUsage;
+    }
+
+    /**
+     * Consume extra credits for a feature (oldest first)
+     *
+     * @param string $slug Feature slug
+     * @param float $value Usage value
+     * @return float Remaining value after consuming credits
+     */
+    protected function consumeExtraCredits(string $slug, float $value): float
+    {
+        $remainingValue = $value;
+        
+        $credits = $this->extraCredits()
+            ->forFeature($slug)
+            ->active()
+            ->oldestFirst()
+            ->get();
+
+        foreach ($credits as $credit) {
+            if ($remainingValue <= 0) {
+                break;
+            }
+
+            $consumeAmount = min($credit->credits, $remainingValue);
+            
+            $credit->credits -= $consumeAmount;
+            $remainingValue -= $consumeAmount;
+
+            if ($credit->credits <= 0) {
+                $credit->delete();
+            } else {
+                $credit->save();
+            }
+        }
+
+        return $remainingValue;
+    }
+
+    /**
+     * Get credit usage statistics for a feature
+     *
+     * @param string $slug Feature slug
+     * @return array
+     */
+    public function getCreditUsageStats(string $slug): array
+    {
+        $planFeature = $this->planFeature($slug);
+        
+        if (!$planFeature || $planFeature->feature->isNonConsumable()) {
+            return [
+                'plan_limit' => 0,
+                'extra_credits' => 0,
+                'total_available' => 0,
+                'used' => 0,
+                'remaining' => 0,
+            ];
+        }
+
+        $planLimit = $planFeature->isUnlimited() ? 'unlimited' : floatval($planFeature->value);
+        $extraCredits = $this->totalExtraCredits($slug);
+        $used = $this->totalFeatureUsageInPeriod($slug);
+
+        if ($planLimit === 'unlimited') {
+            return [
+                'plan_limit' => 'unlimited',
+                'extra_credits' => $extraCredits,
+                'total_available' => 'unlimited',
+                'used' => $used,
+                'remaining' => 'unlimited',
+            ];
+        }
+
+        $totalAvailable = $planLimit + $extraCredits;
+        $remaining = $totalAvailable - $used;
+
+        return [
+            'plan_limit' => $planLimit,
+            'extra_credits' => $extraCredits,
+            'total_available' => $totalAvailable,
+            'used' => $used,
+            'remaining' => max(0, $remaining),
+        ];
     }
 }

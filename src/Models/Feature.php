@@ -109,6 +109,17 @@ class Feature extends Model
             ->withPivot(['value']);
     }
 
+    /**
+     * @return HasMany<SubscriptionFeatureCredit, $this>
+     */
+    public function subscriptionFeatureCredits(): HasMany
+    {
+        /** @var class-string<SubscriptionFeatureCredit> */
+        $class = config('larasub.models.subscription_feature_credits');
+
+        return $this->hasMany($class);
+    }
+
     public function isConsumable(): bool
     {
         return $this->type == FeatureType::CONSUMABLE;

@@ -137,4 +137,87 @@ trait HasSubscription
 
         return $subscription->useFeature($slug, $value);
     }
+
+    /**
+     * Grant extra credits for a specific feature to the active subscription
+     *
+     * @param string $slug Feature slug
+     * @param float $credits Number of credits to grant
+     * @param string|null $reason Reason for granting credits
+     * @param array $options Additional options
+     * @return SubscriptionFeatureCredit
+     */
+    public function grantExtraCredits(string $slug, float $credits, ?string $reason = null, array $options = []): SubscriptionFeatureCredit
+    {
+        $subscription = SubscriptionHelperService::validateActiveSubscription($this);
+
+        $options['reason'] = $reason;
+        
+        return $subscription->grantExtraCredits($slug, $credits, $options);
+    }
+
+    /**
+     * Get total extra credits for a feature in the active subscription
+     *
+     * @param string $slug Feature slug
+     * @return float
+     */
+    public function extraCredits(string $slug): float
+    {
+        $subscription = SubscriptionHelperService::validateActiveSubscription($this);
+
+        return $subscription->totalExtraCredits($slug);
+    }
+
+    /**
+     * Get total available credits (plan + extra) for a feature
+     *
+     * @param string $slug Feature slug
+     * @return float|string 'unlimited' if unlimited
+     */
+    public function totalAvailableCredits(string $slug)
+    {
+        $subscription = SubscriptionHelperService::validateActiveSubscription($this);
+        
+        $stats = $subscription->getCreditUsageStats($slug);
+        
+        return $stats['total_available'];
+    }
+
+    /**
+     * Get credit usage statistics for a feature
+     *
+     * @param string $slug Feature slug
+     * @return array
+     */
+    public function getCreditUsageStats(string $slug): array
+    {
+        $subscription = SubscriptionHelperService::validateActiveSubscription($this);
+
+        return $subscription->getCreditUsageStats($slug);
+    }
+
+    /**
+     * Grant multiple extra credits at once
+     *
+     * @param array $credits Array of slug => credit_amount
+     * @param string|null $reason Reason for granting credits
+     * @param array $options Additional options
+     * @return array Array of SubscriptionFeatureCredit instances
+     */
+    public function grantMultipleExtraCredits(array $credits, ?string $reason = null, array $options = []): array
+    {
+        $subscription = SubscriptionHelperService::validateActiveSubscription($this);
+        
+        $results = [];
+        
+        foreach ($credits as $slug => $amount) {
+            $creditOptions = $options;
+            $creditOptions['reason'] = $reason;
+            
+            $results[$slug] = $subscription->grantExtraCredits($slug, $amount, $creditOptions);
+        }
+        
+        return $results;
+    }
 }
