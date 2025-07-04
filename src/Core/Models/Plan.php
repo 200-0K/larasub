@@ -2,11 +2,12 @@
 
 namespace Err0r\Larasub\Core\Models;
 
-use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Carbon\Carbon;
+use Err0r\Larasub\Core\Contracts\PlanContract;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Str;
 
 /**
@@ -27,10 +28,13 @@ use Illuminate\Support\Str;
  * @property \Carbon\Carbon $updated_at
  * @property ?\Carbon\Carbon $deleted_at
  */
-class Plan extends Model
+class Plan extends Model implements PlanContract
 {
-    use HasFactory, SoftDeletes;
+    use SoftDeletes;
 
+    /**
+     * The attributes that are mass assignable.
+     */
     protected $fillable = [
         'name',
         'slug',
@@ -44,21 +48,27 @@ class Plan extends Model
         'sort_order',
     ];
 
+    /**
+     * The attributes that should be cast.
+     */
     protected $casts = [
-        'price' => 'float',
+        'price' => 'decimal:2',
         'period_count' => 'integer',
         'metadata' => 'array',
         'is_active' => 'boolean',
         'sort_order' => 'integer',
     ];
 
+    /**
+     * The default values for attributes.
+     */
     protected $attributes = [
         'currency' => 'USD',
         'period' => 'month',
         'period_count' => 1,
-        'metadata' => '{}',
         'is_active' => true,
         'sort_order' => 0,
+        'metadata' => '{}',
     ];
 
     protected static function boot()
@@ -109,11 +119,27 @@ class Plan extends Model
     }
 
     /**
+     * Scope to order by sort order
+     */
+    public function scopeOrdered(Builder $query): Builder
+    {
+        return $query->orderBy('sort_order')->orderBy('price');
+    }
+
+    /**
      * Check if plan is free
      */
     public function isFree(): bool
     {
         return $this->price <= 0;
+    }
+
+    /**
+     * Check if plan is active
+     */
+    public function isActive(): bool
+    {
+        return $this->is_active;
     }
 
     /**
@@ -135,16 +161,48 @@ class Plan extends Model
     /**
      * Calculate end date from a start date
      */
-    public function calculateEndDate($startDate = null): \Carbon\Carbon
+    public function calculateEndDate(?Carbon $startDate = null): Carbon
     {
-        $start = $startDate ? \Carbon\Carbon::parse($startDate) : now();
+        $startDate = $startDate ?: now();
 
         return match($this->period) {
-            'day' => $start->addDays($this->period_count),
-            'week' => $start->addWeeks($this->period_count),
-            'month' => $start->addMonths($this->period_count),
-            'year' => $start->addYears($this->period_count),
-            default => $start->addMonths($this->period_count),
+            'day' => $startDate->copy()->addDays($this->period_count),
+            'week' => $startDate->copy()->addWeeks($this->period_count),
+            'month' => $startDate->copy()->addMonths($this->period_count),
+            'year' => $startDate->copy()->addYears($this->period_count),
+            default => $startDate->copy()->addMonths($this->period_count),
         };
+    }
+
+    /**
+     * Get the plan's display price with currency
+     */
+    public function getFormattedPrice(): string
+    {
+        if ($this->isFree()) {
+            return 'Free';
+        }
+
+        return sprintf('%s %s', $this->currency, number_format($this->price, 2));
+    }
+
+    /**
+     * Get the plan's period in human readable format
+     */
+    public function getHumanReadablePeriod(): string
+    {
+        $period = $this->period_count === 1 
+            ? $this->period 
+            : "{$this->period_count} {$this->period}s";
+
+        return ucfirst($period);
+    }
+
+    /**
+     * Get the route key for the model
+     */
+    public function getRouteKeyName(): string
+    {
+        return 'slug';
     }
 }

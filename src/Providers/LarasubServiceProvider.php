@@ -2,6 +2,7 @@
 
 namespace Err0r\Larasub\Providers;
 
+use Err0r\Larasub\Core\Commands\CreatePlanCommand;
 use Illuminate\Support\ServiceProvider;
 
 class LarasubServiceProvider extends ServiceProvider
@@ -12,7 +13,8 @@ class LarasubServiceProvider extends ServiceProvider
     public function register(): void
     {
         $this->mergeConfigFrom(
-            __DIR__.'/../../config/larasub.php', 'larasub'
+            __DIR__.'/../../config/larasub.php', 
+            'larasub'
         );
     }
 
@@ -22,31 +24,55 @@ class LarasubServiceProvider extends ServiceProvider
     public function boot(): void
     {
         if ($this->app->runningInConsole()) {
-            // Publish config
-            $this->publishes([
-                __DIR__.'/../../config/larasub.php' => config_path('larasub.php'),
-            ], 'larasub-config');
-
-            // Publish core migrations
-            $this->publishes([
-                __DIR__.'/../../database/migrations/create_plans_table.php' => database_path('migrations/'.date('Y_m_d_His', time()).'_create_plans_table.php'),
-                __DIR__.'/../../database/migrations/create_subscriptions_table.php' => database_path('migrations/'.date('Y_m_d_His', time() + 1).'_create_subscriptions_table.php'),
-            ], 'larasub-migrations');
-
-            // Publish feature migrations (optional)
-            if (config('larasub.features.enabled')) {
-                $this->publishes([
-                    __DIR__.'/../../database/migrations/create_features_tables.php' => database_path('migrations/'.date('Y_m_d_His', time() + 2).'_create_features_tables.php'),
-                ], 'larasub-features-migrations');
-            }
-
-            // Register commands
-            $this->commands([
-                \Err0r\Larasub\Commands\CreatePlanCommand::class,
-            ]);
+            $this->publishConfig();
+            $this->publishMigrations();
+            $this->registerCommands();
         }
+    }
 
-        // Load migrations
-        $this->loadMigrationsFrom(__DIR__.'/../../database/migrations');
+    /**
+     * Publish the configuration file.
+     */
+    protected function publishConfig(): void
+    {
+        $this->publishes([
+            __DIR__.'/../../config/larasub.php' => config_path('larasub.php'),
+        ], 'larasub-config');
+    }
+
+    /**
+     * Publish the migration files.
+     */
+    protected function publishMigrations(): void
+    {
+        $timestamp = date('Y_m_d_His');
+        
+        // Core migrations
+        $this->publishes([
+            __DIR__.'/../../database/migrations/create_plans_table.php' => 
+                database_path("migrations/{$timestamp}_create_plans_table.php"),
+            __DIR__.'/../../database/migrations/create_subscriptions_table.php' => 
+                database_path("migrations/" . date('Y_m_d_His', time() + 1) . "_create_subscriptions_table.php"),
+        ], 'larasub-migrations');
+
+        // Optional feature migrations
+        if (config('larasub.features.enabled', false)) {
+            $this->publishes([
+                __DIR__.'/../../database/migrations/create_features_table.php' => 
+                    database_path("migrations/" . date('Y_m_d_His', time() + 2) . "_create_features_table.php"),
+                __DIR__.'/../../database/migrations/create_feature_usage_table.php' => 
+                    database_path("migrations/" . date('Y_m_d_His', time() + 3) . "_create_feature_usage_table.php"),
+            ], 'larasub-features-migrations');
+        }
+    }
+
+    /**
+     * Register the package commands.
+     */
+    protected function registerCommands(): void
+    {
+        $this->commands([
+            CreatePlanCommand::class,
+        ]);
     }
 }

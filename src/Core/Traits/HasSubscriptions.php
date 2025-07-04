@@ -3,6 +3,7 @@
 namespace Err0r\Larasub\Core\Traits;
 
 use Carbon\Carbon;
+use Err0r\Larasub\Core\Contracts\Subscribable;
 use Err0r\Larasub\Core\Models\Plan;
 use Err0r\Larasub\Core\Models\Subscription;
 use Illuminate\Database\Eloquent\Relations\MorphMany;
@@ -10,16 +11,16 @@ use Illuminate\Database\Eloquent\Relations\MorphMany;
 trait HasSubscriptions
 {
     /**
-     * Get all subscriptions for this model
+     * Get all subscriptions for the entity.
      */
     public function subscriptions(): MorphMany
     {
         return $this->morphMany(Subscription::class, 'subscriber')
-                    ->orderBy('created_at', 'desc');
+            ->orderBy('created_at', 'desc');
     }
 
     /**
-     * Get active subscriptions
+     * Get all active subscriptions.
      */
     public function activeSubscriptions(): MorphMany
     {
@@ -27,7 +28,7 @@ trait HasSubscriptions
     }
 
     /**
-     * Get the current active subscription
+     * Get the current active subscription.
      */
     public function subscription(): ?Subscription
     {
@@ -35,7 +36,7 @@ trait HasSubscriptions
     }
 
     /**
-     * Check if the model has any active subscription
+     * Check if the entity has any active subscription.
      */
     public function hasSubscription(): bool
     {
@@ -43,95 +44,114 @@ trait HasSubscriptions
     }
 
     /**
-     * Check if the model is subscribed to a specific plan
+     * Check if the entity is subscribed to a specific plan.
      */
-    public function subscribedTo($plan): bool
+    public function subscribedTo(string|Plan $plan): bool
     {
-        $planId = $plan instanceof Plan ? $plan->id : $plan;
+        $planId = $plan instanceof Plan ? $plan->id : Plan::where('slug', $plan)->value('id');
         
         return $this->activeSubscriptions()
-                    ->where('plan_id', $planId)
-                    ->exists();
+            ->where('plan_id', $planId)
+            ->exists();
     }
 
     /**
-     * Subscribe to a plan
+     * Subscribe the entity to a plan.
      */
-    public function subscribe($plan, array $options = []): Subscription
+    public function subscribe(Plan $plan, array $options = []): Subscription
     {
-        $plan = $plan instanceof Plan ? $plan : Plan::findOrFail($plan);
-        
-        // Cancel any existing active subscriptions if requested
-        if ($options['cancel_existing'] ?? false) {
-            $this->activeSubscriptions()->each->cancel(true);
+        // Cancel any existing active subscription if switching
+        if ($this->hasSubscription() && !($options['keep_existing'] ?? false)) {
+            $this->subscription()->cancel();
         }
-        
-        $subscription = $this->subscriptions()->create([
+
+        return $this->subscriptions()->create([
             'plan_id' => $plan->id,
-            'status' => $options['status'] ?? 'pending',
+            'status' => $options['status'] ?? 'active',
             'starts_at' => $options['starts_at'] ?? now(),
             'ends_at' => $options['ends_at'] ?? $plan->calculateEndDate($options['starts_at'] ?? now()),
             'trial_ends_at' => $options['trial_ends_at'] ?? null,
             'metadata' => $options['metadata'] ?? [],
         ]);
-        
-        // Auto-activate if not pending
-        if ($subscription->status !== 'pending') {
-            $subscription->activate();
-        }
-        
-        return $subscription;
     }
 
     /**
-     * Create a subscription starting in the future
+     * Subscribe starting from a specific date.
      */
-    public function subscribeFrom(Carbon $startsAt, $plan, array $options = []): Subscription
+    public function subscribeFrom($startDate, Plan $plan, array $options = []): Subscription
     {
-        $options['starts_at'] = $startsAt;
+        $options['starts_at'] = $startDate;
         return $this->subscribe($plan, $options);
     }
 
     /**
-     * Subscribe with a trial period
+     * Subscribe with a trial period.
      */
-    public function subscribeWithTrial($plan, int $trialDays, array $options = []): Subscription
+    public function subscribeWithTrial(Plan $plan, int $trialDays, array $options = []): Subscription
     {
         $options['trial_ends_at'] = now()->addDays($trialDays);
         return $this->subscribe($plan, $options);
     }
 
     /**
-     * Check if on trial for any subscription
+     * Switch to a different plan.
      */
-    public function onTrial(): bool
+    public function switchTo(Plan $plan, bool $immediately = false): ?Subscription
     {
-        return $this->subscriptions()
-                    ->active()
-                    ->whereNotNull('trial_ends_at')
-                    ->where('trial_ends_at', '>', now())
-                    ->exists();
-    }
-
-    /**
-     * Check if on trial for a specific plan
-     */
-    public function onTrialFor($plan): bool
-    {
-        $planId = $plan instanceof Plan ? $plan->id : $plan;
+        $currentSubscription = $this->subscription();
         
-        return $this->subscriptions()
-                    ->active()
-                    ->where('plan_id', $planId)
-                    ->whereNotNull('trial_ends_at')
-                    ->where('trial_ends_at', '>', now())
-                    ->exists();
+        if (!$currentSubscription) {
+            return $this->subscribe($plan);
+        }
+
+        if ($immediately) {
+            return $this->switchToNow($plan);
+        }
+
+        // Schedule the switch at the end of the current period
+        return $this->subscriptions()->create([
+            'plan_id' => $plan->id,
+            'status' => 'pending',
+            'starts_at' => $currentSubscription->ends_at,
+            'ends_at' => $plan->calculateEndDate($currentSubscription->ends_at),
+            'metadata' => ['switched_from' => $currentSubscription->plan_id],
+        ]);
     }
 
     /**
-     * Cancel all active subscriptions
+     * Switch to a different plan immediately.
      */
-    public function cancelSubscriptions(bool $immediately = false): void
+    public function switchToNow(Plan $plan): Subscription
+    {
+        $currentSubscription = $this->subscription();
+        
+        if ($currentSubscription) {
+            $currentSubscription->cancel(true);
+        }
+
+        return $this->subscribe($plan);
+    }
+
+    /**
+     * Check if the entity has ever subscribed.
+     */
+    public function hasEverSubscribed(): bool
+    {
+        return $this->subscriptions()->exists();
+    }
+
+    /**
+     * Get the entity's latest subscription (active or not).
+     */
+    public function latestSubscription(): ?Subscription
+    {
+        return $this->subscriptions()->latest()->first();
+    }
+
+    /**
+     * Cancel all active subscriptions.
+     */
+    public function cancelAllSubscriptions(bool $immediately = false): void
     {
         $this->activeSubscriptions()->each(function ($subscription) use ($immediately) {
             $subscription->cancel($immediately);
@@ -139,41 +159,22 @@ trait HasSubscriptions
     }
 
     /**
-     * Get subscription for a specific plan
+     * Check if the entity is on trial for any subscription.
      */
-    public function subscriptionFor($plan): ?Subscription
+    public function onTrial(): bool
     {
-        $planId = $plan instanceof Plan ? $plan->id : $plan;
-        
         return $this->activeSubscriptions()
-                    ->where('plan_id', $planId)
-                    ->first();
+            ->get()
+            ->contains(fn ($subscription) => $subscription->onTrial());
     }
 
     /**
-     * Switch to a different plan
+     * Get subscriptions that are ending soon.
      */
-    public function switchTo($plan, array $options = []): Subscription
+    public function subscriptionsEndingSoon(int $days = 7)
     {
-        // Cancel current subscription at period end
-        if ($current = $this->subscription()) {
-            $current->cancel();
-            
-            // Set new subscription to start when current ends
-            if (!isset($options['starts_at']) && $current->ends_at) {
-                $options['starts_at'] = $current->ends_at;
-            }
-        }
-        
-        return $this->subscribe($plan, $options);
-    }
-
-    /**
-     * Immediately switch to a different plan
-     */
-    public function switchToNow($plan, array $options = []): Subscription
-    {
-        $options['cancel_existing'] = true;
-        return $this->subscribe($plan, $options);
+        return $this->activeSubscriptions()
+            ->get()
+            ->filter(fn ($subscription) => $subscription->endingSoon($days));
     }
 }
