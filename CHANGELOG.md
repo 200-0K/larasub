@@ -2,6 +2,40 @@
 
 All notable changes to `larasub` will be documented in this file.
 
+## v4.0.0 - 2024-XX-XX
+
+### 🎉 Complete Rewrite - Simplicity First!
+
+This is a major release that completely reimagines Larasub with a focus on simplicity and ease of use.
+
+### Changed
+- **Removed plan versioning** - Plans are now simple and straightforward
+- **Removed complex builders** - Use standard Laravel model creation
+- **Simplified to 2 core tables** - Just `plans` and `subscriptions`
+- **Removed multi-language support** - Keep it simple (can be added if needed)
+- **Simplified API** - If you know Laravel, you know Larasub
+- **Made features optional** - Core package is just subscriptions
+
+### Added
+- **Simple status management** - `pending`, `active`, `cancelled`, `expired`
+- **Trial support** - Built into core subscriptions
+- **Metadata fields** - Store custom data on plans and subscriptions
+- **Better status helpers** - `endingSoon()`, `daysRemaining()`, etc.
+
+### Removed
+- Plan versioning system
+- Complex builder pattern
+- Event system (use Laravel's built-in events)
+- Resource classes (use Laravel's built-in resources)
+- Translatable support
+- Complex feature system (now optional module)
+
+### Migration from v3
+Due to the significant changes, this is a breaking change. See the [Migration Guide](docs/migration-v3-to-v4.md) for upgrade instructions.
+
+### Why These Changes?
+Based on user feedback, the previous version was overwhelming with too many features. v4 focuses on the 80% use case - simple subscription management. Advanced features are available as optional modules.
+
 ## [3.0.0]
 
 ### ⚠️ BREAKING CHANGES

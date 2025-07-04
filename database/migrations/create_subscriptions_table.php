@@ -11,37 +11,51 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create(config('larasub.tables.subscriptions.name'), function (Blueprint $table) {
-            if (config('larasub.tables.subscriptions.uuid')) {
+        Schema::create(config('larasub.tables.subscriptions', 'subscriptions'), function (Blueprint $table) {
+            // Primary key
+            if (config('larasub.use_uuid', false)) {
                 $table->uuid('id')->primary();
             } else {
                 $table->id();
             }
 
-            (
-                config('larasub.tables.subscribers.uuid')
-                ? $table->uuidMorphs('subscriber')
-                : $table->morphs('subscriber')
-            );
-
-            (
-                config('larasub.tables.plan_versions.uuid')
-                ? $table->foreignUuid('plan_version_id')
-                : $table->foreignId('plan_version_id')
-            )->constrained(config('larasub.tables.plan_versions.name'))->cascadeOnDelete();
-
-            (
-                config('larasub.tables.subscriptions.uuid')
-                ? $table->foreignUuid('renewed_from_id')
-                : $table->foreignId('renewed_from_id')
-            )->nullable()->constrained(config('larasub.tables.subscriptions.name'));
-
-            $table->timestamp('start_at')->nullable();
-            $table->timestamp('end_at')->nullable();
+            // Relationships
+            if (config('larasub.use_uuid', false)) {
+                $table->uuid('plan_id');
+            } else {
+                $table->unsignedBigInteger('plan_id');
+            }
+            
+            // Polymorphic relation to subscriber (user, team, etc.)
+            $table->morphs('subscriber');
+            
+            // Status
+            $table->enum('status', ['pending', 'active', 'cancelled', 'expired'])->default('pending');
+            
+            // Dates
+            $table->timestamp('starts_at')->nullable();
+            $table->timestamp('ends_at')->nullable();
             $table->timestamp('cancelled_at')->nullable();
-
-            $table->softDeletes();
+            $table->timestamp('trial_ends_at')->nullable();
+            
+            // Additional data
+            $table->json('metadata')->nullable();
+            
+            // Timestamps
             $table->timestamps();
+            $table->softDeletes();
+            
+            // Indexes
+            $table->index('status');
+            $table->index('starts_at');
+            $table->index('ends_at');
+            $table->index(['subscriber_type', 'subscriber_id']);
+            
+            // Foreign key
+            $table->foreign('plan_id')
+                  ->references('id')
+                  ->on(config('larasub.tables.plans', 'plans'))
+                  ->onDelete('restrict');
         });
     }
 
@@ -50,6 +64,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists(config('larasub.tables.subscriptions.name'));
+        Schema::dropIfExists(config('larasub.tables.subscriptions', 'subscriptions'));
     }
 };

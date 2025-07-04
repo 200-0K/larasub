@@ -11,21 +11,41 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create(config('larasub.tables.plans.name'), function (Blueprint $table) {
-            if (config('larasub.tables.plans.uuid')) {
+        Schema::create(config('larasub.tables.plans', 'plans'), function (Blueprint $table) {
+            // Primary key
+            if (config('larasub.use_uuid', false)) {
                 $table->uuid('id')->primary();
             } else {
                 $table->id();
             }
 
+            // Core fields
+            $table->string('name');
             $table->string('slug')->unique();
-            $table->json('name');
-            $table->json('description')->nullable();
+            $table->text('description')->nullable();
+            
+            // Pricing
+            $table->decimal('price', 10, 2)->default(0);
+            $table->string('currency', 3)->default(config('larasub.default_currency', 'USD'));
+            
+            // Billing period
+            $table->enum('period', ['day', 'week', 'month', 'year'])->default('month');
+            $table->unsignedInteger('period_count')->default(1);
+            
+            // Additional data
+            $table->json('metadata')->nullable();
+            
+            // Status and ordering
             $table->boolean('is_active')->default(true);
-            $table->unsignedMediumInteger('sort_order')->default(0);
-
-            $table->softDeletes();
+            $table->integer('sort_order')->default(0);
+            
+            // Timestamps
             $table->timestamps();
+            $table->softDeletes();
+            
+            // Indexes
+            $table->index('is_active');
+            $table->index('sort_order');
         });
     }
 
@@ -34,6 +54,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists(config('larasub.tables.plans.name'));
+        Schema::dropIfExists(config('larasub.tables.plans', 'plans'));
     }
 };
